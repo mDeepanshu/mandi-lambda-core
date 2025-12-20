@@ -21,7 +21,7 @@ export async function listDevices(event: any) {
 
     if (!status) {
       // Same logic as Java: default to all statuses
-      statusList = ['ACTIVE', 'INACTIVE', 'BLOCKED', 'DELETED'];
+      statusList = ['REQUESTED', 'REJECTED', 'APPROVED'];
     } else if (Array.isArray(status)) {
       statusList = status as DeviceStatus[];
     } else {
@@ -38,7 +38,7 @@ export async function listDevices(event: any) {
 
 export async function updateDeviceStatus(event: any) {
   try {
-    const id = Number(event.pathParameters?.id);
+    const id = Number(event.queryStringParameters?.id);
     const status = event.queryStringParameters?.status as DeviceStatus;
 
     if (!id || !status) {

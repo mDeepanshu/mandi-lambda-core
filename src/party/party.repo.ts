@@ -1,5 +1,7 @@
+import { log } from 'console';
 import { supabase } from '../common/supabase';
 
+//partyCode is missing
 export async function insertParties(parties: any[]) {
   const { data, error } = await supabase
     .from('party')
@@ -11,10 +13,11 @@ export async function insertParties(parties: any[]) {
 }
 
 export async function updateParty(party: any) {
+  log('Updating party:', party);
   const { data, error } = await supabase
     .from('party')
     .update(party)
-    .eq('id', party.id)
+    .eq('party_id', party.party_id)
     .select()
     .single();
 
@@ -26,7 +29,7 @@ export async function fetchPartyById(partyId: string) {
   const { data, error } = await supabase
     .from('party')
     .select('*')
-    .eq('id', partyId)
+    .eq('party_id', partyId)
     .single();
 
   if (error) throw error;
@@ -50,7 +53,7 @@ export async function validatePartyCode(
   let query = supabase
     .from('party')
     .select('*')
-    .eq('mobile_number', mobileNumber);
+    .eq('contact', mobileNumber);
 
   if (partyCode) query = query.eq('party_code', partyCode);
   if (idNo) query = query.eq('id_no', idNo);
@@ -60,6 +63,7 @@ export async function validatePartyCode(
   return data;
 }
 
+//not checked
 export async function vasuliTransaction(
   transactions: any[],
   confirmDuplicate: boolean

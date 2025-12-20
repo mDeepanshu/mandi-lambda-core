@@ -1,4 +1,4 @@
 export interface AddItemRequestDTO {
-  itemId?: string;
+  item_id?: string;
   name: string;
 }

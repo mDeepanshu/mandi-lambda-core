@@ -3,12 +3,12 @@ import { AddItemRequestDTO } from './items.models';
 
 export async function insertItems(items: AddItemRequestDTO[]) {
   const payload = items.map(i => ({
-    item_id: i.itemId,
+    item_id: i.item_id,
     name: i.name,
   }));
 
   const { data, error } = await supabase
-    .from('item')
+    .from('items')
     .insert(payload)
     .select();
 
@@ -18,7 +18,7 @@ export async function insertItems(items: AddItemRequestDTO[]) {
 
 export async function fetchAllItems() {
   const { data, error } = await supabase
-    .from('item')
+    .from('items')
     .select('*')
     .order('name');
 

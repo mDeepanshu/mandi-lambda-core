@@ -3,7 +3,7 @@ import { DeviceStatus } from './device.models';
 
 export async function insertDevice(name: string) {
   const { data, error } = await supabase
-    .from('device')
+    .from('device_details')
     .insert({ name })
     .select()
     .single();
@@ -16,7 +16,7 @@ export async function fetchDevicesByStatus(
   statusList: DeviceStatus[]
 ) {
   const { data, error } = await supabase
-    .from('device')
+    .from('device_details')
     .select('*')
     .in('status', statusList);
 
@@ -28,8 +28,9 @@ export async function updateDeviceStatus(
   id: number,
   status: DeviceStatus
 ) {
+  
   const { data, error } = await supabase
-    .from('device')
+    .from('device_details')
     .update({ status })
     .eq('id', id)
     .select()

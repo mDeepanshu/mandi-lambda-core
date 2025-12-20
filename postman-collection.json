@@ -1,0 +1,400 @@
+{
+  "info": {
+    "name": "Mandi Backend APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Party",
+      "item": [
+        {
+          "name": "List All Parties",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/party/listAllParties"
+          }
+        },
+        {
+          "name": "Get Party By Id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/party/getPartyById?partyId=123"
+          }
+        },
+        {
+          "name": "Validate Party Code",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/party/validatePartyCode?mobileNumber=9999999999"
+          }
+        },
+        {
+          "name": "Create Party",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[]"
+            },
+            "url": "{{baseUrl}}/party"
+          }
+        },
+        {
+          "name": "Update Party",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/party"
+          }
+        },
+        {
+          "name": "Vasuli Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[]"
+            },
+            "url": "{{baseUrl}}/party/vasuliTrasaction"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Item",
+      "item": [
+        {
+          "name": "Create Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[]"
+            },
+            "url": "{{baseUrl}}/item"
+          }
+        },
+        {
+          "name": "List Items",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/item/listItems"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Device",
+      "item": [
+        {
+          "name": "Register Device",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"Tablet-01\" }"
+            },
+            "url": "{{baseUrl}}/device/register"
+          }
+        },
+        {
+          "name": "List Devices",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/device/listDevices"
+          }
+        },
+        {
+          "name": "Update Device Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "deviceId",
+                "value": "{{deviceId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/device/1/status?status=ACTIVE"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auction",
+      "item": [
+        {
+          "name": "Add Auction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "deviceId",
+                "value": "{{deviceId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[]"
+            },
+            "url": "{{baseUrl}}/auction"
+          }
+        },
+        {
+          "name": "Generate Ledger",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auction/generate-ledger?startDate=2024-01-01"
+          }
+        },
+        {
+          "name": "List Auction Transactions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auction/list-auction-transaction?startDate=2024-01-01&endDate=2024-01-31"
+          }
+        },
+        {
+          "name": "Edit Auction Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/auction/edit-auction-transaction"
+          }
+        },
+        {
+          "name": "Delete Auction Transaction",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"auctionTransactionIds\": [] }"
+            },
+            "url": "{{baseUrl}}/auction/delete-auction-transaction"
+          }
+        },
+        {
+          "name": "Mark Transaction Validated",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/auction/mark-transaction-validated?fromDate=2024-01-01&toDate=2024-01-31&vyapariId=V1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bill",
+      "item": [
+        {
+          "name": "Save Kisan Bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/bills/kisan-bill"
+          }
+        },
+        {
+          "name": "Get Kisan Bill",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/bills/kisan-bill?kisanId=K1&billDate=2024-01-01&index=0"
+          }
+        },
+        {
+          "name": "Save Vyapari Bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/bills/vyapari-bill"
+          }
+        },
+        {
+          "name": "Get Vyapari Bill",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/bills/vyapari-bill?vyapariId=V1&billDate=2024-01-01&index=0"
+          }
+        },
+        {
+          "name": "Auto Save Bills",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/bills/autoSaveBills"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Kisan",
+      "item": [
+        {
+          "name": "Generate Bill",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/kisan/generateBill?kisanId=K1&date=2024-01-01"
+          }
+        },
+        {
+          "name": "Save Bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/kisan/saveBill?kisanId=K1&date=2024-01-01"
+          }
+        },
+        {
+          "name": "Bill Payment Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/kisan/kisanBillPaymentSummary?startDate=2024-01-01&endDate=2024-01-31&listLive=false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vyapari",
+      "item": [
+        {
+          "name": "Generate Bill",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vyapari/generateBill?vyapariId=V1&date=2024-01-01"
+          }
+        },
+        {
+          "name": "Ledger",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vyapari/ledger?vyapariId=V1&startDate=2024-01-01&endDate=2024-01-31"
+          }
+        },
+        {
+          "name": "Ledger List",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\"V1\", \"V2\"]"
+            },
+            "url": "{{baseUrl}}/vyapari/ledger-list?startDate=2024-01-01&endDate=2024-01-31"
+          }
+        },
+        {
+          "name": "Vasuli List",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vyapari/vasuli-list?startDate=2024-01-01&endDate=2024-01-31"
+          }
+        },
+        {
+          "name": "Pending Vasuli",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vyapari/pending-vasuli?showToday=true"
+          }
+        },
+        {
+          "name": "Notify Vasuli",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"vyapariId\": \"V1\", \"message\": \"Reminder\" }"
+            },
+            "url": "{{baseUrl}}/vyapari/notify-vasuli"
+          }
+        }
+      ]
+    }
+  ]
+}

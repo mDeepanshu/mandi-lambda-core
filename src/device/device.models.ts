@@ -7,7 +7,6 @@ export interface NewDeviceCreationRequestDTO {
  * Update values if your enum differs
  */
 export type DeviceStatus =
-  | 'ACTIVE'
-  | 'INACTIVE'
-  | 'BLOCKED'
-  | 'DELETED';
+  | 'REQUESTED'
+  | 'REJECTED'
+  | 'APPROVED';

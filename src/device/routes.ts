@@ -13,7 +13,7 @@ export async function route(event: any) {
   if (method === 'GET' && path === '/device/listDevices')
     return listDevices(event);
 
-  if (method === 'PUT' && path.match(/^\/device\/\d+\/status$/))
+  if (method === 'PUT' && path === '/device/updateStatus')
     return updateDeviceStatus(event);
 
   return {
