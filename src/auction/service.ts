@@ -12,11 +12,15 @@ export const addAuction = (
 ) =>
   repo.addAuction(auctions, deviceId);
 
-export const generateLedger = (
+export async function generateLedger(
   startDate: string,
   endDate?: string
-) =>
-  repo.generateLedger(startDate, endDate);
+) {
+  return repo.generateAuctionLedger(
+    startDate,
+    endDate ?? startDate
+  );
+}
 
 export const editAuctionTransaction = (
   dto: EditAuctionTransactionDTO

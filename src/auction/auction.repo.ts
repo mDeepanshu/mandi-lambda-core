@@ -17,15 +17,23 @@ export async function addAuction(
   return data;
 }
 
-export async function generateLedger(
+export async function generateAuctionLedger(
   startDate: string,
-  endDate?: string
+  endDate: string
 ) {
-  const { data, error } = await supabase.rpc('auction_generate_ledger', {
-    start_date: startDate,
-    end_date: endDate,
-  });
-  if (error) throw error;
+  const { data, error } = await supabase.rpc(
+    'generate_auction_ledger',
+    {
+      start_time: startDate,
+      end_time: endDate,
+    }
+  );
+
+  if (error) {
+    console.error('generateAuctionLedger error:', error);
+    throw error;
+  }
+
   return data;
 }
 
@@ -45,15 +53,17 @@ export async function listAuctionTransaction(
   endDate: string,
   deviceId?: string | null
 ) {
+  console.log(startDate, endDate);
+
   const { data, error } = await supabase.rpc(
-    'list_auction_transaction',
+    'generate_auction_transactions_report',
     {
       start_date: startDate,
       end_date: endDate,
-      device_id: deviceId,
+      device_id_param: deviceId,
     }
   );
-  if (error) throw error;
+  if (error) return error;
   return data;
 }
 

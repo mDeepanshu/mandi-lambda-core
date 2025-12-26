@@ -31,7 +31,7 @@ export async function getLedgerList(
   startDate: string,
   endDate: string
 ) {
-  const { data, error } = await supabase.rpc('get_vyapari_ledger_list', {
+  const { data, error } = await supabase.rpc('find_ledger_transactions_list', {
     vyapari_ids: vyapariIds,
     start_date: startDate,
     end_date: endDate,
@@ -81,7 +81,7 @@ export async function editVasuli(vasuli: any) {
 
 export async function getPendingVasuli(showToday: boolean) {
   const { data, error } = await supabase.rpc('get_pending_vasuli', {
-    show_today: showToday,
+    showtoday: showToday,
   });
 
   if (error) throw error;
