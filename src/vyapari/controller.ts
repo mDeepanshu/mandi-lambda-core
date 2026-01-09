@@ -59,7 +59,7 @@ export async function vasuliList(event: any) {
   try {
     const { startDate, endDate } = event.queryStringParameters || {};
     const list = await service.getVasuliList(startDate, endDate);
-    return success({ vasuliList: list });
+    return success(list);
   } catch {
     return error();
   }

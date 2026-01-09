@@ -9,7 +9,7 @@ export interface AddAuctionTransactionDTO {
 export interface AddAuctionDto {
   kisanId: string;
   itemId?: string;
-  bag?: number;
+  bagTotal?: number;
   buyItems?: AddAuctionTransactionDTO[];
   auctionDate?: string; // yyyy-MM-dd
   deviceId?: string;

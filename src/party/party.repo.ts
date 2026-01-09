@@ -37,10 +37,10 @@ export async function fetchPartyById(partyId: string) {
 }
 
 export async function fetchAllParties(partyType?: string) {
-  let query = supabase.from('party').select('*');
-  if (partyType) query = query.eq('party_type', partyType);
 
-  const { data, error } = await query;
+  const { data, error } = await supabase.rpc('get_all_parties', {
+    party_type_param: partyType === 'KISAN' ? '0' : '1'
+  });
   if (error) throw error;
   return data;
 }
@@ -69,10 +69,22 @@ export async function vasuliTransaction(
   confirmDuplicate: boolean
 ) {
   // placeholder — implement exact logic from Java later
-  const { data, error } = await supabase
-    .from('vasuli_transaction')
-    .insert(transactions)
-    .select();
+  console.log(transactions);
+  if (!transactions.length) {
+    return null;
+  }
+
+  const { data, error } = await supabase.rpc('insert_vasuli', {
+    p_amount: transactions[0].amount,
+    p_date: transactions[0].date,
+    p_vyapari_id: transactions[0].vyapariId,
+    p_remark: transactions[0].remark,
+    p_was_null: transactions[0].was_null
+  });
+
+
+  console.log(data);
+
 
   if (error && !confirmDuplicate) throw error;
   return data;

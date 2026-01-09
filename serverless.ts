@@ -14,7 +14,25 @@ const serverlessConfiguration: AWS = {
       shouldStartNameWithService: true,
     },
     httpApi: {
-      cors: true,
+      cors: {
+        allowedOrigins: [
+          'http://localhost:4200',
+          'http://localhost:3000',
+          'http://localhost:3001',
+          'http://localhost:3002',
+          'http://localhost:3003',
+        ],
+        allowedHeaders: [
+          'Content-Type',
+          'Authorization',
+          'X-Amz-Date',
+          'X-Api-Key',
+          'X-Amz-Security-Token',
+          'deviceId',
+        ],
+        allowedMethods: ['OPTIONS', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+        allowCredentials: true,
+      },
     },
     environment: {
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',

@@ -2,7 +2,7 @@ import { supabase } from '../common/supabase';
 import {
   AddAuctionDto,
   DeleteAuctionTransactionDto,
-  EditAuctionTransactionDTO,
+  // EditAuctionTransactionDTO,
 } from './auction.models';
 
 export async function addAuction(
@@ -30,7 +30,6 @@ export async function generateAuctionLedger(
   );
 
   if (error) {
-    console.error('generateAuctionLedger error:', error);
     throw error;
   }
 
@@ -38,12 +37,24 @@ export async function generateAuctionLedger(
 }
 
 export async function editAuctionTransaction(
-  dto: EditAuctionTransactionDTO
+  dto: any
 ) {
-  const { data, error } = await supabase.rpc(
-    'edit_auction_transaction',
-    dto
-  );
+
+  // const modifiedDto = {
+  //   p_auction_transaction_id: dto.auctionTransactionId,
+  //   p_bag: Number(dto.bag),
+  //   p_bag_wise_quantity: dto.bagWiseQuantity,
+  //   p_chungi: Number(dto.chungi),
+  //   p_new_vyapari_id: dto.vyapariId,
+  //   p_quantity: Number(dto.quantity),
+  //   p_rate: Number(dto.rate)
+  // };
+  
+  const { data, error } = await supabase.rpc('edit_auction_by_recreate',{
+    auction_transaction_ids: dto.deleteAuctionTransactionDto.auctionTransactionIds,
+    new_payload: dto.addAuctionDtos
+  });
+
   if (error) throw error;
   return data;
 }
@@ -53,10 +64,8 @@ export async function listAuctionTransaction(
   endDate: string,
   deviceId?: string | null
 ) {
-  console.log(startDate, endDate);
-
   const { data, error } = await supabase.rpc(
-    'generate_auction_transactions_report',
+    'get_auction_transactions_report2',
     {
       start_date: startDate,
       end_date: endDate,

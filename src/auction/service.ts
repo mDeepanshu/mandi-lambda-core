@@ -43,10 +43,11 @@ export const editAuction = async (
   dto: EditAuctionDTO,
   deviceId: string
 ) => {
-  await repo.deleteAuctionTransactions(
-    dto.deleteAuctionTransactionDto
-  );
-  await repo.addAuction(dto.addAuctionDtos, deviceId);
+  // await repo.deleteAuctionTransactions(
+  //   dto.deleteAuctionTransactionDto
+  // );
+  // await repo.addAuction(dto.addAuctionDtos, deviceId);
+  await repo.editAuctionTransaction(dto);
 };
 
 export const markTransactionValidated = (
