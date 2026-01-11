@@ -47,7 +47,7 @@ export const editAuction = async (
   //   dto.deleteAuctionTransactionDto
   // );
   // await repo.addAuction(dto.addAuctionDtos, deviceId);
-  await repo.editAuctionTransaction(dto);
+  await repo.editAuction(dto);
 };
 
 export const markTransactionValidated = (

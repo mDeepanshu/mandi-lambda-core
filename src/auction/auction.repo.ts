@@ -36,7 +36,7 @@ export async function generateAuctionLedger(
   return data;
 }
 
-export async function editAuctionTransaction(
+export async function editAuction(
   dto: any
 ) {
 
@@ -49,11 +49,35 @@ export async function editAuctionTransaction(
   //   p_quantity: Number(dto.quantity),
   //   p_rate: Number(dto.rate)
   // };
-  
-  const { data, error } = await supabase.rpc('edit_auction_by_recreate',{
+
+  const { data, error } = await supabase.rpc('edit_auction_by_recreate', {
     auction_transaction_ids: dto.deleteAuctionTransactionDto.auctionTransactionIds,
     new_payload: dto.addAuctionDtos
   });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function editAuctionTransaction(
+  dto: any
+) {
+
+  const modifiedDto = {
+    p_auction_transaction_id: dto.auctionTransactionId,
+    p_bag: Number(dto.bag),
+    p_bag_wise_quantity: dto.bagWiseQuantity,
+    p_chungi: Number(dto.chungi),
+    p_new_vyapari_id: dto.vyapariId,
+    p_quantity: Number(dto.quantity),
+    p_rate: Number(dto.rate)
+  };
+
+  console.log(modifiedDto);
+  
+
+  let { data, error } = await supabase
+    .rpc('edit_auction_transaction', modifiedDto)
 
   if (error) throw error;
   return data;
