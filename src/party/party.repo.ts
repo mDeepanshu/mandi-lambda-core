@@ -1,4 +1,3 @@
-import { log } from 'console';
 import { supabase } from '../common/supabase';
 
 //partyCode is missing
@@ -13,11 +12,26 @@ export async function insertParties(parties: any[]) {
 }
 
 export async function updateParty(party: any) {
-  log('Updating party:', party);
+
+  // party_id: party.id,
+  // id_no: party.id_no,
+  // owed_amount: party.owed_amount,
+  // party_type: party.partyType,
+  // last_vasuli_date: party.last_vasuli_date,
+  // kisan_type: party.kisanType
+  const modiParty = {
+    contact: party.contact,
+    name: party.name,
+    max_loan_days: party.maxLoanDays,
+    ledger_order: party.ledgerOrder,
+    last_notified_amount: party.lastNotifiedAmount,
+    party_code: party.partyCode,
+  };
+
   const { data, error } = await supabase
     .from('party')
-    .update(party)
-    .eq('party_id', party.party_id)
+    .update(modiParty)
+    .eq('party_id', party.id)
     .select()
     .single();
 

@@ -73,9 +73,6 @@ export async function editAuctionTransaction(
     p_rate: Number(dto.rate)
   };
 
-  console.log(modifiedDto);
-  
-
   let { data, error } = await supabase
     .rpc('edit_auction_transaction', modifiedDto)
 
