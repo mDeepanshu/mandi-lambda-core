@@ -6,11 +6,10 @@ import {
 } from './kisan.models';
 
 export async function fetchBillTransactions(
-  kisanId: string,
-  date: string
+  billId: string
 ): Promise<KisanBillResponseDTO[]> {
   const { data, error } = await supabase
-    .rpc('generate_kisan_bill', { kisan_id: kisanId, bill_date: date });
+    .rpc('get_kisan_bill_by_id', { p_bill_id: billId });
 
   if (error) throw error;
   return data;
@@ -19,31 +18,46 @@ export async function fetchBillTransactions(
 export async function saveBill(
   kisanId: string,
   date: string,
-  dto: KisanBillDTO
+  dto: KisanBillDTO,
 ) {
   const { data, error } = await supabase
-    .rpc('save_kisan_bill', {
-      kisan_id: kisanId,
-      bill_date: date,
-      payload: dto,
+    .rpc('create_kisan_bill', {
+      p_payload: dto
+    });
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchKisanBillSummary(
+  date: string,
+): Promise<any> {
+  const { data, error } = await supabase.rpc('get_kisan_bills_by_date', {
+    p_bill_date: date
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchPendingItemsSummary(
+  startDate?: string,
+  endDate?: string
+): Promise<any> {
+  const { data, error } = await supabase
+    .rpc('pending_items_summary', {
+      start_date: startDate,
+      end_date: endDate,
     });
 
   if (error) throw error;
   return data;
 }
 
-export async function fetchKisanBillSummary(
-  startDate?: string,
-  endDate?: string,
-  listLive = false
-): Promise<KisanBillPaymentResponseDTO> {
-  const { data, error } = await supabase
-    .rpc('kisan_bill_payment_summary', {
-      start_date: startDate,
-      end_date: endDate,
-      list_live: listLive,
-    });
-
+export async function fetchPendingByKisanId(
+  kisanId: string
+): Promise<any> {
+  const { data, error } = await supabase.rpc('get_pending_stock_by_kisan_id', {
+    p_kisan_id: kisanId
+  });
   if (error) throw error;
   return data;
 }

@@ -6,28 +6,37 @@ import {
 } from './kisan.models';
 
 export async function generateBill(
-  kisanId: string,
-  date: string
-): Promise<KisanBillDTO> {
-  const bills = await repo.fetchBillTransactions(kisanId, date);
-  const grouped = groupBillsByParentId(bills);
-  return { bills: grouped };
+  billId: string
+): Promise<any> {
+  return repo.fetchBillTransactions(billId);
 }
 
 export async function saveBill(
   kisanId: string,
   date: string,
-  dto: KisanBillDTO
+  dto: KisanBillDTO,
 ) {
   return repo.saveBill(kisanId, date, dto);
 }
 
 export async function kisanBillPaymentSummary(
+  date: string
+): Promise<any> {
+  return repo.fetchKisanBillSummary(date);
+}
+
+export async function PendingItemsSummary(
   startDate?: string,
-  endDate?: string,
-  listLive = false
-): Promise<KisanBillPaymentResponseDTO> {
-  return repo.fetchKisanBillSummary(startDate, endDate, listLive);
+  endDate?: string
+): Promise<any> {
+  return repo.fetchPendingItemsSummary(startDate, endDate);
+}
+
+export async function PendingByKisanId(
+  kisanId: string
+): Promise<any> {
+  const summary = await repo.fetchPendingByKisanId(kisanId);
+  return summary;
 }
 
 /* ---------- helper (ported from Java) ---------- */

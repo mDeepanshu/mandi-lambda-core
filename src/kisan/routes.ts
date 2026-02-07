@@ -2,6 +2,8 @@ import {
   generateBill,
   saveBill,
   kisanBillPaymentSummary,
+  PendingItemsSummary,
+  PendingByKisanId
 } from './controller';
 
 export async function route(event: any) {
@@ -15,6 +17,12 @@ export async function route(event: any) {
 
   if (method === 'GET' && path === '/kisan/kisanBillPaymentSummary')
     return kisanBillPaymentSummary(event);
+
+  if (method === 'GET' && path === '/kisan/PendingItemsSummary')
+    return PendingItemsSummary(event);
+
+  if (method === 'GET' && path === '/kisan/PendingByKisanId')
+    return PendingByKisanId(event);
 
   return {
     statusCode: 404,
