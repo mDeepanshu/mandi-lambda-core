@@ -11,7 +11,10 @@ export async function fetchBillTransactions(
   const { data, error } = await supabase
     .rpc('get_kisan_bill_by_id', { p_bill_id: billId });
 
-  if (error) throw error;
+  if (error) {
+    if (error.message === 'Kisan bill not found') return [];
+    throw error;
+  }
   return data;
 }
 
@@ -57,6 +60,16 @@ export async function fetchPendingByKisanId(
 ): Promise<any> {
   const { data, error } = await supabase.rpc('get_pending_stock_by_kisan_id', {
     p_kisan_id: kisanId
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function markPendingAsSold(
+  pendingId: string
+): Promise<any> {
+  const { data, error } = await supabase.rpc('mark_pending_stock_sold', {
+    p_id: pendingId
   });
   if (error) throw error;
   return data;

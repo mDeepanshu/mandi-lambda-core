@@ -76,3 +76,17 @@ export async function PendingByKisanId(event: any) {
     return error();
   }
 }
+
+export async function markPendingAsSold(event: any) {
+  try {
+    const { pendingId } =
+      event.queryStringParameters || {};
+    if (!pendingId) return error('pendingId is required', 400);
+    
+    const result = await service.markPendingAsSold(pendingId);
+    return success(result);
+  } catch (e) {
+    console.error(e);
+    return error();
+  }
+}

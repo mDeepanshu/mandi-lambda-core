@@ -3,7 +3,8 @@ import {
   saveBill,
   kisanBillPaymentSummary,
   PendingItemsSummary,
-  PendingByKisanId
+  PendingByKisanId,
+  markPendingAsSold
 } from './controller';
 
 export async function route(event: any) {
@@ -23,6 +24,9 @@ export async function route(event: any) {
 
   if (method === 'GET' && path === '/kisan/PendingByKisanId')
     return PendingByKisanId(event);
+
+  if (method === 'GET' && path === '/kisan/markPendingAsSold')
+    return markPendingAsSold(event);
 
   return {
     statusCode: 404,

@@ -39,6 +39,12 @@ export async function PendingByKisanId(
   return summary;
 }
 
+export async function markPendingAsSold(
+  pendingId: string
+): Promise<any> {
+  return repo.markPendingAsSold(pendingId);
+}
+
 /* ---------- helper (ported from Java) ---------- */
 
 function groupBillsByParentId(
