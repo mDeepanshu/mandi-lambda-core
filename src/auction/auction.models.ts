@@ -3,6 +3,7 @@ export interface AddAuctionTransactionDTO {
   quantity?: number;
   bag?: number;
   chungi?: number;
+  crate_count?: number;
   bagWiseQuantity?: number[];
 }
 
@@ -10,6 +11,7 @@ export interface AddAuctionDto {
   kisanId: string;
   itemId?: string;
   bagTotal?: number;
+  crate_id?: number;
   buyItems?: AddAuctionTransactionDTO[];
   auctionDate?: string; // yyyy-MM-dd
   deviceId?: string;

@@ -1,3 +1,4 @@
+import { routeNotFound } from '../common/error';
 import * as c from './controller';
 
 export async function route(event: any) {
@@ -18,5 +19,5 @@ export async function route(event: any) {
   if (method === 'PATCH' && path === '/bills/autoSaveBills')
     return c.autoSaveBills();
 
-  return { statusCode: 404, body: 'Route not found' };
+  return routeNotFound();
 }

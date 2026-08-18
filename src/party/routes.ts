@@ -1,3 +1,5 @@
+import { APIGatewayProxyEventV2 } from 'aws-lambda';
+import { routeNotFound } from '../common/error';
 import {
   createParty,
   updateParty,
@@ -7,7 +9,7 @@ import {
   vasuliTransaction,
 } from './controller';
 
-export async function route(event: any) {
+export async function route(event: APIGatewayProxyEventV2) {
   const { method, path } = event.requestContext.http;
 
   // POST /party
@@ -40,8 +42,5 @@ export async function route(event: any) {
     return vasuliTransaction(event);
   }
 
-  return {
-    statusCode: 404,
-    body: JSON.stringify({ message: 'Route not found' }),
-  };
+  return routeNotFound();
 }

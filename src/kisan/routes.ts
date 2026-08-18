@@ -1,3 +1,4 @@
+import { routeNotFound } from '../common/error';
 import {
   generateBill,
   saveBill,
@@ -28,8 +29,5 @@ export async function route(event: any) {
   if (method === 'GET' && path === '/kisan/markPendingAsSold')
     return markPendingAsSold(event);
 
-  return {
-    statusCode: 404,
-    body: JSON.stringify({ message: 'Route not found' }),
-  };
+  return routeNotFound();
 }

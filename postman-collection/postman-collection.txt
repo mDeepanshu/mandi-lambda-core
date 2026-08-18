@@ -1,0 +1,166 @@
+# --------------------
+# Crate
+# --------------------
+
+curl --location --request POST 'http://localhost:3000/crate' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request GET 'http://localhost:3000/crate'
+
+curl --location --request GET 'http://localhost:3000/crate/summary?date=2026-05-18'
+
+curl --location --request GET 'http://localhost:3000/crate/stock-report?date=2026-05-18'
+
+curl --location --request GET 'http://localhost:3000/crate/ledger?vyapariId=YOUR_VYAPARI_ID'
+
+curl --location --request GET 'http://localhost:3000/crate/vasuli-sheet?date=2026-05-18'
+
+curl --location --request GET 'http://localhost:3000/crate/pending-summary'
+
+curl --location --request GET 'http://localhost:3000/crate/pending-crates?vyapariId=YOUR_VYAPARI_ID'
+
+curl --location --request POST 'http://localhost:3000/crate/return' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+
+# --------------------
+# Party
+# --------------------
+
+curl --location --request POST 'http://localhost:3000/party' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request PATCH 'http://localhost:3000/party' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request GET 'http://localhost:3000/party/getPartyById?partyId=YOUR_PARTY_ID'
+
+curl --location --request GET 'http://localhost:3000/party/listAllParties?partyType=YOUR_PARTY_TYPE'
+
+curl --location --request GET 'http://localhost:3000/party/validatePartyCode?partyCode=YOUR_PARTY_CODE'
+
+curl --location --request POST 'http://localhost:3000/party/vasuliTrasaction' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+
+# --------------------
+# Item
+# --------------------
+
+curl --location --request POST 'http://localhost:3000/item' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request GET 'http://localhost:3000/item/listItems'
+
+
+# --------------------
+# Kisan
+# --------------------
+
+curl --location --request GET 'http://localhost:3000/kisan/generateBill?kisanId=YOUR_KISAN_ID'
+
+curl --location --request POST 'http://localhost:3000/kisan/saveBill' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request GET 'http://localhost:3000/kisan/kisanBillPaymentSummary?kisanId=YOUR_KISAN_ID'
+
+curl --location --request GET 'http://localhost:3000/kisan/PendingItemsSummary'
+
+curl --location --request GET 'http://localhost:3000/kisan/PendingByKisanId?kisanId=YOUR_KISAN_ID'
+
+curl --location --request GET 'http://localhost:3000/kisan/markPendingAsSold?kisanId=YOUR_KISAN_ID'
+
+
+# --------------------
+# Device
+# --------------------
+
+curl --location --request POST 'http://localhost:3000/device/register' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request GET 'http://localhost:3000/device/listDevices'
+
+curl --location --request PUT 'http://localhost:3000/device/updateStatus' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+
+# --------------------
+# Vyapari
+# --------------------
+
+curl --location --request GET 'http://localhost:3000/vyapari/generateBill?vyapariId=YOUR_VYAPARI_ID'
+
+curl --location --request GET 'http://localhost:3000/vyapari/ledger?vyapariId=YOUR_VYAPARI_ID'
+
+curl --location --request POST 'http://localhost:3000/vyapari/ledger-list' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request GET 'http://localhost:3000/vyapari/ledger-list-all-vyapari'
+
+curl --location --request GET 'http://localhost:3000/vyapari/vasuli-list'
+
+curl --location --request PUT 'http://localhost:3000/vyapari/edit-vasuli' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request GET 'http://localhost:3000/vyapari/pending-vasuli'
+
+curl --location --request POST 'http://localhost:3000/vyapari/notify-vasuli' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+
+# --------------------
+# Auction
+# --------------------
+
+curl --location --request POST 'http://localhost:3000/auction' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request GET 'http://localhost:3000/auction/generate-ledger?date=2026-05-18'
+
+curl --location --request POST 'http://localhost:3000/auction/edit-auction-transaction' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request GET 'http://localhost:3000/auction/list-auction-transaction'
+
+curl --location --request DELETE 'http://localhost:3000/auction/delete-auction-transaction?id=YOUR_TRANSACTION_ID'
+
+curl --location --request PATCH 'http://localhost:3000/auction/edit-auction' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request PATCH 'http://localhost:3000/auction/mark-transaction-validated' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+
+# --------------------
+# Bills
+# --------------------
+
+curl --location --request POST 'http://localhost:3000/bills/kisan-bill' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request GET 'http://localhost:3000/bills/kisan-bill?kisanId=YOUR_KISAN_ID'
+
+curl --location --request POST 'http://localhost:3000/bills/vyapari-bill' \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+
+curl --location --request GET 'http://localhost:3000/bills/vyapari-bill?vyapariId=YOUR_VYAPARI_ID'
+
+curl --location --request PATCH 'http://localhost:3000/bills/autoSaveBills'

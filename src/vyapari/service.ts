@@ -1,4 +1,5 @@
 import * as repo from './vyapari.repo';
+import { EditVasuliDto, NotifyVasuliDto } from './vyapari.models';
 
 export const generateBill = (vyapariId: string, date: string) =>
   repo.generateBill(vyapariId, date);
@@ -29,11 +30,11 @@ export const listAllVyapariLedger = (startDate: string, endDate: string) =>
 export const getVasuliList = (startDate: string, endDate: string) =>
   repo.getVasuliList(startDate, endDate);
 
-export const editVasuli = (vasuli: any) =>
+export const editVasuli = (vasuli: EditVasuliDto) =>
   repo.editVasuli(vasuli);
 
 export const getPendingVasuli = (showToday: boolean) =>
   repo.getPendingVasuli(showToday);
 
-export const notifyVasuli = (dto: any) =>
+export const notifyVasuli = (dto: NotifyVasuliDto) =>
   repo.notifyVasuli(dto);

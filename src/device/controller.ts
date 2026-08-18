@@ -1,26 +1,35 @@
+import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import * as service from './service';
-import { success, error } from '../common/response.util';
-import { DeviceStatus, NewDeviceCreationRequestDTO } from './device.models';
+import { handleError } from '../common/error';
+import { logger } from '../common/logger';
+import { success } from '../common/response.util';
+import { validateBody, validateQuery } from '../common/validation';
+import { DeviceStatus } from './device.models';
+import {
+  listDevicesQuerySchema,
+  registerDeviceBodySchema,
+  updateDeviceStatusQuerySchema,
+} from './validation';
 
-export async function register(event: any) {
+export async function register(event: APIGatewayProxyEventV2) {
   try {
-    const body = JSON.parse(event.body || '{}') as NewDeviceCreationRequestDTO;
+    const body = validateBody(event, registerDeviceBodySchema);
+
+    logger.info('Register device', { name: body.name });
     const result = await service.registerDevice(body);
     return success(result);
   } catch (e) {
-    console.error('register device error:', e);
-    return error();
+    return handleError(e, 'Register device error');
   }
 }
 
-export async function listDevices(event: any) {
+export async function listDevices(event: APIGatewayProxyEventV2) {
   try {
-    let status = event.queryStringParameters?.status;
+    const { status } = validateQuery(event, listDevicesQuerySchema);
 
     let statusList: DeviceStatus[];
 
     if (!status) {
-      // Same logic as Java: default to all statuses
       statusList = ['REQUESTED', 'REJECTED', 'APPROVED'];
     } else if (Array.isArray(status)) {
       statusList = status as DeviceStatus[];
@@ -28,27 +37,24 @@ export async function listDevices(event: any) {
       statusList = status.split(',') as DeviceStatus[];
     }
 
+    logger.info('List devices', { statusList });
     const result = await service.listDevices(statusList);
     return success(result);
   } catch (e) {
-    console.error('listDevices error:', e);
-    return error();
+    return handleError(e, 'List devices error');
   }
 }
 
-export async function updateDeviceStatus(event: any) {
+export async function updateDeviceStatus(event: APIGatewayProxyEventV2) {
   try {
-    const id = Number(event.queryStringParameters?.id);
-    const status = event.queryStringParameters?.status as DeviceStatus;
+    const pathParts = event.requestContext.http.path.split('/');
+    const id = parseInt(pathParts[2], 10);
+    const { status } = validateQuery(event, updateDeviceStatusQuerySchema);
 
-    if (!id || !status) {
-      return error('id and status are required', 400);
-    }
-
+    logger.info('Update device status', { id, status });
     const result = await service.updateDeviceStatus(id, status);
     return success(result);
   } catch (e) {
-    console.error('updateDeviceStatus error:', e);
-    return error();
+    return handleError(e, 'Update device status error');
   }
 }

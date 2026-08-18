@@ -1,10 +1,8 @@
-import {
-  register,
-  listDevices,
-  updateDeviceStatus,
-} from './controller';
+import { APIGatewayProxyEventV2 } from 'aws-lambda';
+import { routeNotFound } from '../common/error';
+import { register, listDevices, updateDeviceStatus } from './controller';
 
-export async function route(event: any) {
+export async function route(event: APIGatewayProxyEventV2) {
   const { method, path } = event.requestContext.http;
 
   if (method === 'POST' && path === '/device/register')
@@ -13,11 +11,8 @@ export async function route(event: any) {
   if (method === 'GET' && path === '/device/listDevices')
     return listDevices(event);
 
-  if (method === 'PUT' && path === '/device/updateStatus')
+  if (method === 'PUT' && /^\/device\/\d+\/status$/.test(path))
     return updateDeviceStatus(event);
 
-  return {
-    statusCode: 404,
-    body: JSON.stringify({ message: 'Route not found' }),
-  };
+  return routeNotFound();
 }

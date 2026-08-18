@@ -1,82 +1,107 @@
+import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import * as service from './service';
-import { success, error } from '../common/response.util';
+import { handleError } from '../common/error';
+import { logger } from '../common/logger';
+import { success } from '../common/response.util';
+import { validateBody, validateHeaders, validateQuery } from '../common/validation';
+import {
+  addAuctionBodySchema,
+  deleteAuctionTransactionBodySchema,
+  deviceIdHeaderSchema,
+  editAuctionBodySchema,
+  editAuctionTransactionBodySchema,
+  generateLedgerQuerySchema,
+  listAuctionTransactionQuerySchema,
+  markTransactionValidatedQuerySchema,
+} from './validation';
 
-export async function postAuction(event: any) {
+export async function postAuction(event: APIGatewayProxyEventV2) {
   try {
-    const body = JSON.parse(event.body || '[]');
-    const deviceId = event.headers?.deviceid;
-    if (!deviceId) return error('deviceId header is required', 400);
+    const body = validateBody(event, addAuctionBodySchema);
+    if (body.length === 0) return success(null);
+    const { deviceid } = validateHeaders(event, deviceIdHeaderSchema);
 
-    return success(await service.addAuction(body, deviceId));
+    logger.info('Post auction', { count: body.length, deviceId: deviceid });
+    return success(await service.addAuction(body, deviceid));
   } catch (e) {
-    console.error(e);
-    return error();
+    return handleError(e, 'Post auction error');
   }
 }
 
-export async function generateLedger(event: any) {
+export async function generateLedger(event: APIGatewayProxyEventV2) {
   try {
-    const { startDate, endDate } =
-      event.queryStringParameters || {};
+    const { startDate, endDate } = validateQuery(event, generateLedgerQuerySchema);
+
+    logger.info('Generate auction ledger', { startDate, endDate });
     return success(await service.generateLedger(startDate, endDate));
-  } catch {
-    return error();
+  } catch (e) {
+    return handleError(e, 'Generate auction ledger error');
   }
 }
 
-export async function editAuctionTransaction(event: any) {
+export async function editAuctionTransaction(event: APIGatewayProxyEventV2) {
   try {
-    const body = JSON.parse(event.body || '{}');
+    const body = validateBody(event, editAuctionTransactionBodySchema);
+
+    logger.info('Edit auction transaction', { auctionTransactionId: body.auctionTransactionId });
     return success(await service.editAuctionTransaction(body));
-  } catch {
-    return error();
+  } catch (e) {
+    return handleError(e, 'Edit auction transaction error');
   }
 }
 
-export async function listAuctionTransaction(event: any) {
+export async function listAuctionTransaction(event: APIGatewayProxyEventV2) {
   try {
-    let { startDate, endDate, deviceId } =
-      event.queryStringParameters || {};
-    deviceId = deviceId?.trim() || null;
+    const { startDate, endDate, deviceId } = validateQuery(
+      event,
+      listAuctionTransactionQuerySchema
+    );
 
+    logger.info('List auction transactions', { startDate, endDate, deviceId });
     return success(
       await service.listAuctionTransaction(
         startDate,
         endDate,
-        deviceId
+        deviceId?.trim() || null
       )
     );
-  } catch {
-    return error();
+  } catch (e) {
+    return handleError(e, 'List auction transaction error');
   }
 }
 
-export async function deleteAuctionTransaction(event: any) {
+export async function deleteAuctionTransaction(event: APIGatewayProxyEventV2) {
   try {
-    const body = JSON.parse(event.body || '{}');
+    const body = validateBody(event, deleteAuctionTransactionBodySchema);
+
+    logger.info('Delete auction transactions', { count: body.auctionTransactionIds.length });
     return success(await service.deleteAuctionTransactions(body));
-  } catch {
-    return error();
+  } catch (e) {
+    return handleError(e, 'Delete auction transaction error');
   }
 }
 
-export async function editAuction(event: any) {
+export async function editAuction(event: APIGatewayProxyEventV2) {
   try {
-    const body = JSON.parse(event.body || '{}');
-    const deviceId = event.headers?.deviceid;
-    if (!deviceId) return error('deviceId header is required', 400);
+    const body = validateBody(event, editAuctionBodySchema);
+    validateHeaders(event, deviceIdHeaderSchema);
 
-    await service.editAuction(body, deviceId);
+    logger.info('Edit auction', { deleteCount: body.deleteAuctionTransactionDto.auctionTransactionIds.length, addCount: body.addAuctionDtos.length });
+    await service.editAuction(body);
     return success(null);
-  } catch {
-    return error();
+  } catch (e) {
+    return handleError(e, 'Edit auction error');
   }
 }
 
-export async function markTransactionValidated(event: any) {
+export async function markTransactionValidated(event: APIGatewayProxyEventV2) {
   try {
-    const { fromDate, toDate, vyapariId } =
-      event.queryStringParameters || {};
+    const { fromDate, toDate, vyapariId } = validateQuery(
+      event,
+      markTransactionValidatedQuerySchema
+    );
+
+    logger.info('Mark transactions validated', { fromDate, toDate, vyapariId });
     return success(
       await service.markTransactionValidated(
         fromDate,
@@ -84,7 +109,7 @@ export async function markTransactionValidated(event: any) {
         vyapariId
       )
     );
-  } catch {
-    return error();
+  } catch (e) {
+    return handleError(e, 'Mark transaction validated error');
   }
 }

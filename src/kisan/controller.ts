@@ -1,92 +1,87 @@
+import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import * as service from './service';
-import { success, error } from '../common/response.util';
+import { handleError } from '../common/error';
+import { logger } from '../common/logger';
+import { success } from '../common/response.util';
+import { validateBody, validateQuery } from '../common/validation';
+import {
+  generateBillQuerySchema,
+  kisanBillPaymentSummaryQuerySchema,
+  markPendingAsSoldQuerySchema,
+  pendingByKisanIdQuerySchema,
+  pendingItemsSummaryQuerySchema,
+  saveBillBodySchema,
+} from './validation';
 
-export async function generateBill(event: any) {
+export async function generateBill(event: APIGatewayProxyEventV2) {
   try {
-    const { billId } = event.queryStringParameters || {};
-    if (!billId)
-      return error('billId is required', 400);
+    const { billId } = validateQuery(event, generateBillQuerySchema);
 
+    logger.info('Generate kisan bill', { billId });
     const result = await service.generateBill(billId);
     return success(result);
   } catch (e: any) {
-    console.error(e);
-    if (e.message?.includes('Parse'))
-      return error('Parse Exception. Maybe Date format is wrong', 400);
-    return error();
+    return handleError(e, 'Generate kisan bill error');
   }
 }
 
-export async function saveBill(event: any) {
+export async function saveBill(event: APIGatewayProxyEventV2) {
   try {
-    const body = JSON.parse(event.body || '{}');
+    const body = validateBody(event, saveBillBodySchema);
     const { kisanId, bill_date } = body;
 
-    if (!kisanId || !bill_date)
-      return error('kisanId and bill_date are required', 400);
-
+    logger.info('Save kisan bill', { kisanId, billDate: bill_date });
     const result = await service.saveBill(kisanId, bill_date, body);
     return success(result);
   } catch (e) {
-    console.error(e);
-    return error();
+    return handleError(e, 'Save kisan bill error');
   }
 }
 
-export async function kisanBillPaymentSummary(event: any) {
+export async function kisanBillPaymentSummary(event: APIGatewayProxyEventV2) {
   try {
-    const { date } =
-      event.queryStringParameters || {};
+    const { date } = validateQuery(event, kisanBillPaymentSummaryQuerySchema);
 
-    const result = await service.kisanBillPaymentSummary(
-      date
-    );
-
+    logger.info('Kisan bill payment summary', { date });
+    const result = await service.kisanBillPaymentSummary(date);
     return success(result);
   } catch (e) {
-    console.error(e);
-    return error();
+    return handleError(e, 'Kisan bill payment summary error');
   }
 }
 
-export async function PendingItemsSummary(event: any) {
+export async function PendingItemsSummary(event: APIGatewayProxyEventV2) {
   try {
+    const { startDate, endDate } = validateQuery(event, pendingItemsSummaryQuerySchema);
 
-    const { startDate, endDate } =
-      event.queryStringParameters || {};
-
+    logger.info('Pending items summary', { startDate, endDate });
     const result = await service.PendingItemsSummary(startDate, endDate);
     return success(result);
   } catch (e) {
-    console.error(e);
-    return error();
+    return handleError(e, 'Pending items summary error');
   }
 }
 
-export async function PendingByKisanId(event: any) {
+export async function PendingByKisanId(event: APIGatewayProxyEventV2) {
   try {
-    const { kisanId } =
-      event.queryStringParameters || {};
-    if (!kisanId) return error('kisanId is required', 400);
+    const { kisanId } = validateQuery(event, pendingByKisanIdQuerySchema);
 
+    logger.info('Pending by kisan id', { kisanId });
     const result = await service.PendingByKisanId(kisanId);
     return success(result);
   } catch (e) {
-    console.error(e);
-    return error();
+    return handleError(e, 'Pending by kisan id error');
   }
 }
 
-export async function markPendingAsSold(event: any) {
+export async function markPendingAsSold(event: APIGatewayProxyEventV2) {
   try {
-    const { pendingId } =
-      event.queryStringParameters || {};
-    if (!pendingId) return error('pendingId is required', 400);
-    
+    const { pendingId } = validateQuery(event, markPendingAsSoldQuerySchema);
+
+    logger.info('Mark pending as sold', { pendingId });
     const result = await service.markPendingAsSold(pendingId);
     return success(result);
   } catch (e) {
-    console.error(e);
-    return error();
+    return handleError(e, 'Mark pending as sold error');
   }
 }

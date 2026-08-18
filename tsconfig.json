@@ -1,24 +1,27 @@
 {
   "extends": "./tsconfig.paths.json",
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "lib": ["ESNext"],
-    "moduleResolution": "node",
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "removeComments": true,
+    "target": "ES2022",
+
+    "module": "Node16",
+    "moduleResolution": "node16",
+
+    "types": ["node"],
+
+    // pinned so ts-node can resolve an entry point under scripts/ as well as
+    // src/ — without it, running a script directly fails with TS5011
+    "rootDir": ".",
+    "outDir": "lib",
     "sourceMap": true,
-    "target": "ES2020",
-    "outDir": "lib"
+    "removeComments": true,
+
+    "strict": true,
+    "esModuleInterop": true,
+
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
-  "include": ["src/**/*.ts", "serverless.ts"],
-  "exclude": [
-    "node_modules/**/*",
-    ".serverless/**/*",
-    ".webpack/**/*",
-    "_warmup/**/*",
-    ".vscode/**/*"
-  ],
-  "ts-node": {
-    "require": ["tsconfig-paths/register"]
-  }
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "serverless.ts"]
 }

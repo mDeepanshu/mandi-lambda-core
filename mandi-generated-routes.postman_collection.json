@@ -1,0 +1,642 @@
+{
+  "info": {
+    "_postman_id": "mandi-generated-routes",
+    "name": "Mandi Generated Routes",
+    "description": "Generated from the available backend routes. Set the baseUrl collection variable before running requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Crate",
+      "item": [
+        {
+          "name": "Create Crate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"crateName\": \"Plastic Crate\",\n  \"total\": 100,\n  \"closingAmount\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/crate"
+          }
+        },
+        {
+          "name": "List Crates",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/crate"
+          }
+        },
+        {
+          "name": "Crate Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/crate/summary?p_date=2026-05-18"
+          }
+        },
+        {
+          "name": "Crate Stock Report",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/crate/stock-report?p_date=2026-05-18"
+          }
+        },
+        {
+          "name": "Crate Ledger",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/crate/ledger?p_from_date=2026-05-01&p_to_date=2026-05-18&p_vyapari_id=VYAPARI_ID"
+          }
+        },
+        {
+          "name": "Crate Vasuli Sheet",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/crate/vasuli-sheet?p_date=2026-05-18"
+          }
+        },
+        {
+          "name": "Pending Crate Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/crate/pending-summary"
+          }
+        },
+        {
+          "name": "Pending Crates By Vyapari",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/crate/pending-crates?p_vyapari_id=VYAPARI_ID"
+          }
+        },
+        {
+          "name": "Return Crate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vyapariId\": \"VYAPARI_ID\",\n  \"date\": \"2026-05-18\",\n  \"crates\": [\n    {\n      \"crate_id\": 1,\n      \"count\": 5\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/crate/return"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Party",
+      "item": [
+        {
+          "name": "Create Party",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"party_id\": \"PARTY_ID\",\n    \"name\": \"Party Name\",\n    \"contact\": \"9999999999\",\n    \"party_type\": \"0\",\n    \"owed_amount\": 0,\n    \"max_loan_days\": 10,\n    \"ledger_order\": 1,\n    \"party_code\": \"P001\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/party"
+          }
+        },
+        {
+          "name": "Update Party",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"PARTY_ID\",\n  \"name\": \"Updated Party Name\",\n  \"contact\": \"9999999999\",\n  \"maxLoanDays\": 10,\n  \"ledgerOrder\": 1,\n  \"lastNotifiedAmount\": 0,\n  \"partyCode\": \"P001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/party"
+          }
+        },
+        {
+          "name": "Get Party By Id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/party/getPartyById?partyId=PARTY_ID"
+          }
+        },
+        {
+          "name": "List All Parties",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/party/listAllParties?partyType=KISAN"
+          }
+        },
+        {
+          "name": "Validate Party Code",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/party/validatePartyCode?mobileNumber=9999999999&partyCode=P001&idNo=1"
+          }
+        },
+        {
+          "name": "Vasuli Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"vyapariId\": \"VYAPARI_ID\",\n    \"date\": \"2026-05-18 10:30:00\",\n    \"amount\": 500,\n    \"remark\": \"Cash received\",\n    \"was_null\": false\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/party/vasuliTrasaction?confirmDuplicate=false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Item",
+      "item": [
+        {
+          "name": "Create Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"item_id\": \"ITEM_ID\",\n    \"name\": \"Tomato\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/item"
+          }
+        },
+        {
+          "name": "List Items",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/item/listItems"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Kisan",
+      "item": [
+        {
+          "name": "Generate Bill",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/kisan/generateBill?billId=1"
+          }
+        },
+        {
+          "name": "Save Bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kisanId\": \"KISAN_ID\",\n  \"kisanName\": \"Kisan Name\",\n  \"bill_date\": \"2026-05-18\",\n  \"billId\": null,\n  \"mandiKharcha\": 20,\n  \"hammali\": 150,\n  \"nagarPalikaTax\": 30,\n  \"nagarPalikaTaxRate\": 2,\n  \"bhada\": 20,\n  \"driver\": 20,\n  \"nagdi\": 20,\n  \"commission\": 0,\n  \"commissionRate\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/kisan/saveBill"
+          }
+        },
+        {
+          "name": "Kisan Bill Payment Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/kisan/kisanBillPaymentSummary?date=2026-05-18"
+          }
+        },
+        {
+          "name": "Pending Items Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/kisan/PendingItemsSummary?startDate=2026-05-01&endDate=2026-05-18"
+          }
+        },
+        {
+          "name": "Pending By Kisan Id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/kisan/PendingByKisanId?kisanId=KISAN_ID"
+          }
+        },
+        {
+          "name": "Mark Pending As Sold",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/kisan/markPendingAsSold?pendingId=PENDING_ID"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Device",
+      "item": [
+        {
+          "name": "Register Device",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tablet-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/device/register"
+          }
+        },
+        {
+          "name": "List Devices",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/device/listDevices?status=REQUESTED,APPROVED,REJECTED"
+          }
+        },
+        {
+          "name": "Update Device Status",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/device/updateStatus?id=1&status=APPROVED"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vyapari",
+      "item": [
+        {
+          "name": "Generate Bill",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vyapari/generateBill?vyapariId=VYAPARI_ID&date=2026-05-18"
+          }
+        },
+        {
+          "name": "Ledger",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vyapari/ledger?vyapariId=VYAPARI_ID&startDate=2026-05-01&endDate=2026-05-18"
+          }
+        },
+        {
+          "name": "Ledger List",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  \"VYAPARI_ID_1\",\n  \"VYAPARI_ID_2\"\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/vyapari/ledger-list?startDate=2026-05-01&endDate=2026-05-18"
+          }
+        },
+        {
+          "name": "Ledger List All Vyapari",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vyapari/ledger-list-all-vyapari?startDate=2026-05-01&endDate=2026-05-18"
+          }
+        },
+        {
+          "name": "Vasuli List",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vyapari/vasuli-list?startDate=2026-05-01&endDate=2026-05-18"
+          }
+        },
+        {
+          "name": "Edit Vasuli",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"VASULI_ID\",\n  \"amount\": 500,\n  \"remark\": \"Updated remark\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/vyapari/edit-vasuli"
+          }
+        },
+        {
+          "name": "Pending Vasuli",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vyapari/pending-vasuli?showToday=false"
+          }
+        },
+        {
+          "name": "Notify Vasuli",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vyapari_id_param\": \"VYAPARI_ID\",\n  \"amount_param\": 500,\n  \"name\": \"Vyapari Name\",\n  \"contact\": \"9999999999\",\n  \"message\": \"Payment reminder\",\n  \"date\": \"2026-05-18\",\n  \"remark\": \"Pending vasuli\",\n  \"idNo\": \"1\",\n  \"templateName\": \"vasuli_reminder\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/vyapari/notify-vasuli"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auction",
+      "item": [
+        {
+          "name": "Add Auction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "deviceId",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"kisanId\": \"KISAN_ID\",\n    \"itemId\": \"ITEM_ID\",\n    \"bagTotal\": 2,\n    \"auctionDate\": \"2026-05-18\",\n    \"buyItems\": [\n      {\n        \"vyapariId\": \"VYAPARI_ID\",\n        \"rate\": 100,\n        \"quantity\": 20,\n        \"bag\": 2,\n        \"chungi\": 0,\n        \"bagWiseQuantity\": [10, 10]\n      }\n    ]\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/auction"
+          }
+        },
+        {
+          "name": "Generate Ledger",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auction/generate-ledger?startDate=2026-05-01&endDate=2026-05-18"
+          }
+        },
+        {
+          "name": "Edit Auction Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"auctionTransactionId\": \"AUCTION_TRANSACTION_ID\",\n  \"vyapariId\": \"VYAPARI_ID\",\n  \"rate\": 100,\n  \"quantity\": 20,\n  \"bag\": 2,\n  \"chungi\": 0,\n  \"bagWiseQuantity\": [10, 10]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/auction/edit-auction-transaction"
+          }
+        },
+        {
+          "name": "List Auction Transaction",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auction/list-auction-transaction?startDate=2026-05-01&endDate=2026-05-18&deviceId=1"
+          }
+        },
+        {
+          "name": "Delete Auction Transaction",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"auctionTransactionIds\": [\n    \"AUCTION_TRANSACTION_ID\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/auction/delete-auction-transaction"
+          }
+        },
+        {
+          "name": "Edit Auction",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "deviceId",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deleteAuctionTransactionDto\": {\n    \"auctionTransactionIds\": [\n      \"OLD_AUCTION_TRANSACTION_ID\"\n    ]\n  },\n  \"addAuctionDtos\": [\n    {\n      \"kisanId\": \"KISAN_ID\",\n      \"itemId\": \"ITEM_ID\",\n      \"bagTotal\": 2,\n      \"auctionDate\": \"2026-05-18\",\n      \"buyItems\": [\n        {\n          \"vyapariId\": \"VYAPARI_ID\",\n          \"rate\": 100,\n          \"quantity\": 20,\n          \"bag\": 2,\n          \"chungi\": 0,\n          \"bagWiseQuantity\": [10, 10]\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/auction/edit-auction"
+          }
+        },
+        {
+          "name": "Mark Transaction Validated",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/auction/mark-transaction-validated?fromDate=2026-05-01&toDate=2026-05-18&vyapariId=VYAPARI_ID"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bills",
+      "item": [
+        {
+          "name": "Save Kisan Bill Snapshot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kisanId\": \"KISAN_ID\",\n  \"billDate\": \"2026-05-18\",\n  \"index\": 0,\n  \"payload\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/bills/kisan-bill"
+          }
+        },
+        {
+          "name": "Get Kisan Bill Snapshot",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/bills/kisan-bill?kisanId=KISAN_ID&billDate=2026-05-18&index=0"
+          }
+        },
+        {
+          "name": "Save Vyapari Bill Snapshot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vyapariId\": \"VYAPARI_ID\",\n  \"billDate\": \"2026-05-18\",\n  \"index\": 0,\n  \"payload\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/bills/vyapari-bill"
+          }
+        },
+        {
+          "name": "Get Vyapari Bill Snapshot",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/bills/vyapari-bill?vyapariId=VYAPARI_ID&billDate=2026-05-18&index=0"
+          }
+        },
+        {
+          "name": "Auto Save Bills",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/bills/autoSaveBills"
+          }
+        }
+      ]
+    }
+  ]
+}

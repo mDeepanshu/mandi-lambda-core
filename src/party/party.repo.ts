@@ -1,7 +1,13 @@
 import { supabase } from '../common/supabase';
+import { logger } from '../common/logger';
+import {
+  UpdatePartyBodySchemaType,
+  VasuliTransactionBodySchemaType,
+} from './validation';
+import { InsertPartyDTO } from './party.models';
 
-//partyCode is missing
-export async function insertParties(parties: any[]) {
+export async function insertParties(parties: InsertPartyDTO[]) {
+  logger.debug('Table: party insert', { count: parties.length });
   const { data, error } = await supabase
     .from('party')
     .insert(parties)
@@ -11,14 +17,7 @@ export async function insertParties(parties: any[]) {
   return data;
 }
 
-export async function updateParty(party: any) {
-
-  // party_id: party.id,
-  // id_no: party.id_no,
-  // owed_amount: party.owed_amount,
-  // party_type: party.partyType,
-  // last_vasuli_date: party.last_vasuli_date,
-  // kisan_type: party.kisanType
+export async function updateParty(party: UpdatePartyBodySchemaType) {
   const modiParty = {
     contact: party.contact,
     name: party.name,
@@ -28,6 +27,7 @@ export async function updateParty(party: any) {
     party_code: party.partyCode,
   };
 
+  logger.debug('Table: party update', { partyId: party.id });
   const { data, error } = await supabase
     .from('party')
     .update(modiParty)
@@ -40,6 +40,7 @@ export async function updateParty(party: any) {
 }
 
 export async function fetchPartyById(partyId: string) {
+  logger.debug('Table: party select by id', { partyId });
   const { data, error } = await supabase
     .from('party')
     .select('*')
@@ -51,9 +52,12 @@ export async function fetchPartyById(partyId: string) {
 }
 
 export async function fetchAllParties(partyType?: string) {
+  const partyTypeParam =
+    partyType === 'KISAN' ? 0 : partyType === 'VYAPARI' ? 1 : null;
 
+  logger.debug('RPC: get_all_parties', { partyType });
   const { data, error } = await supabase.rpc('get_all_parties', {
-    party_type_param: partyType === 'KISAN' ? '0' : '1'
+    party_type_param: partyTypeParam,
   });
   if (error) throw error;
   return data;
@@ -64,6 +68,7 @@ export async function validatePartyCode(
   partyCode?: string,
   idNo?: number
 ) {
+  logger.debug('Table: party select by contact', { mobileNumber });
   let query = supabase
     .from('party')
     .select('*')
@@ -79,26 +84,26 @@ export async function validatePartyCode(
 
 //not checked
 export async function vasuliTransaction(
-  transactions: any[],
+  transactions: VasuliTransactionBodySchemaType,
   confirmDuplicate: boolean
 ) {
-  // placeholder — implement exact logic from Java later
-  console.log(transactions);
   if (!transactions.length) {
     return null;
   }
 
-  const { data, error } = await supabase.rpc('insert_vasuli', {
-    p_amount: transactions[0].amount,
-    p_date: transactions[0].date,
-    p_vyapari_id: transactions[0].vyapariId,
-    p_remark: transactions[0].remark,
-    p_was_null: transactions[0].was_null
-  });
+  // Atomic in the RPC: inserts every payment and decrements each vyapari's
+  // owed_amount. Returns [{ id, vyapariId, amount }] for the caller to map
+  // payments to their generated vasuli ids.
+  const p_payload = transactions.map((t) => ({
+    vyapariId: t.vyapariId,
+    date: t.date,
+    amount: t.amount,
+    remark: t.remark,
+    was_null: t.was_null,
+  }));
 
-
-  console.log(data);
-
+  logger.debug('RPC: insert_vasuli_bulk', { count: p_payload.length });
+  const { data, error } = await supabase.rpc('insert_vasuli_bulk', { p_payload });
 
   if (error && !confirmDuplicate) throw error;
   return data;

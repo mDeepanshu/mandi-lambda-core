@@ -1,6 +1,8 @@
+import { APIGatewayProxyEventV2 } from 'aws-lambda';
+import { routeNotFound } from '../common/error';
 import * as c from './controller';
 
-export async function route(event: any) {
+export async function route(event: APIGatewayProxyEventV2) {
   const { method, path } = event.requestContext.http;
 
   if (method === 'GET' && path === '/vyapari/generateBill') return c.generateBill(event);
@@ -12,5 +14,5 @@ export async function route(event: any) {
   if (method === 'GET' && path === '/vyapari/pending-vasuli') return c.pendingVasuli(event);
   if (method === 'POST' && path === '/vyapari/notify-vasuli') return c.notifyVasuli(event);
 
-  return { statusCode: 404, body: 'Route not found' };
+  return routeNotFound();
 }

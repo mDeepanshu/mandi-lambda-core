@@ -24,13 +24,20 @@ export function success(
 
 export function error(
   message: ResponseMessages | string = ResponseMessages.SOMETHING_WENT_WRONG,
-  code: ResponseCodes = ResponseCodes.SOMETHING_WENT_WRONG
+  code: ResponseCodes | number = ResponseCodes.SOMETHING_WENT_WRONG,
+  body?: any
 ) {
+  const responseBody: Record<string, any> = {
+    responseCode: String(code),
+    responseMessage: message,
+  };
+
+  if (body !== undefined) {
+    responseBody.responseBody = body;
+  }
+
   return {
     statusCode: code,
-    body: JSON.stringify({
-      responseCode: String(code),
-      responseMessage: message,
-    }),
+    body: JSON.stringify(responseBody),
   };
 }

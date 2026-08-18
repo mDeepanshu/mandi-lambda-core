@@ -2,11 +2,12 @@ export interface NewDeviceCreationRequestDTO {
   name: string;
 }
 
-/**
- * Matches DeviceDetails.Status enum in Java
- * Update values if your enum differs
- */
-export type DeviceStatus =
-  | 'REQUESTED'
-  | 'REJECTED'
-  | 'APPROVED';
+export type DeviceStatus = 'REQUESTED' | 'REJECTED' | 'APPROVED' | 'DELETED';
+
+export interface DeviceDetailsDTO {
+  id: number;
+  creation_date: string;
+  name: string | null;
+  status: DeviceStatus;
+  updation_time: string | null;
+}
