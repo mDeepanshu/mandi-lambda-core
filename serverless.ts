@@ -1,4 +1,42 @@
 import type { AWS } from '@serverless/typescript';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+
+// Supabase credentials live in .env (gitignored), never in this file — they are
+// secrets and GitHub push protection rejects them. Copy .env.example to .env.
+const loadEnv = (): Record<string, string> => {
+  try {
+    const raw = readFileSync(resolve(__dirname, '.env'), 'utf-8');
+    return Object.fromEntries(
+      raw
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith('#'))
+        .map((line) => {
+          const eq = line.indexOf('=');
+          return [line.slice(0, eq).trim(), line.slice(eq + 1).trim()];
+        })
+        .filter(([key]) => key)
+    );
+  } catch {
+    return {};
+  }
+};
+
+const fileEnv = loadEnv();
+
+const supabaseFor = (stage: string) => {
+  const suffix = stage.toUpperCase();
+  const url = process.env[`SUPABASE_URL_${suffix}`] ?? fileEnv[`SUPABASE_URL_${suffix}`];
+  const key = process.env[`SUPABASE_KEY_${suffix}`] ?? fileEnv[`SUPABASE_KEY_${suffix}`];
+  if (!url || !key) {
+    throw new Error(
+      `Missing SUPABASE_URL_${suffix} / SUPABASE_KEY_${suffix}. ` +
+        'Copy .env.example to .env and fill in the values for this stage.'
+    );
+  }
+  return { url, key };
+};
 
 const stageArg = process.argv.includes('--stage')
   ? process.argv[process.argv.indexOf('--stage') + 1]
@@ -8,11 +46,15 @@ const originsByStage: Record<string, string[]> = {
   hmb: [
     'https://mandiapplication.make73.com',
     'https://mandi-application-seven.vercel.app',
+    'https://auction-hmb.make73.com',
+    'https://hmb-auction.make73.com',
+    'https://hmb-application.make73.com',
   ],
   his: [
     'https://cratehis.make73.com',
     'https://hiskisanbill.make73.com',
     'https://mandiauction.make73.com',
+    'https://auction-hmb.make73.com',
   ],
 };
 
@@ -171,7 +213,7 @@ const serverlessConfiguration: AWS = {
       external: ['aws-sdk'],
     },
     supabase: {
-
+      [stageArg]: supabaseFor(stageArg),
     },
   },
 };
