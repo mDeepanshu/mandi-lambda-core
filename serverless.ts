@@ -49,6 +49,10 @@ const originsByStage: Record<string, string[]> = {
     'https://auction-hmb.make73.com',
     'https://hmb-auction.make73.com',
     'https://hmb-application.make73.com',
+    // HMB Vyapari app (Firebase Hosting site hmb-vyapari + planned custom domain)
+    'https://hmb-vyapari.web.app',
+    'https://hmb-vyapari.firebaseapp.com',
+    'https://hmb-vyapari.make73.com',
   ],
   his: [
     'https://cratehis.make73.com',
@@ -88,6 +92,8 @@ const serverlessConfiguration: AWS = {
           'X-Api-Key',
           'X-Amz-Security-Token',
           'deviceId',
+          // Sent by the Vyapari app on /vyapari/ledger to hide non-validated entries
+          'vyapariCode',
         ],
         allowedMethods: ['OPTIONS', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
         allowCredentials: false,
