@@ -1,4 +1,4 @@
-import { CrateIssueRequest, CrateReturnRequest, EditCrateAuctionEntryRequest, EditCrateSummaryRequest, EditCrateVasuliRequest } from './crate.model';
+import { CrateIssueRequest, CrateReturnRequest, EditCrateAuctionEntryRequest, EditCrateEntryRequest, EditCrateSummaryRequest, EditCrateVasuliRequest } from './crate.model';
 import * as repo from './crate.repo';
 
 export async function createCrate(
@@ -21,8 +21,8 @@ export async function editCrateSummary(p_payload: EditCrateSummaryRequest) {
   return await repo.editCrateSummary(p_payload);
 }
 
-export async function getCrateSummaryFromLogByDate(p_date: string) {
-  return await repo.getCrateSummaryFromLogByDate(p_date);
+export async function editCrateEntry(p_payload: EditCrateEntryRequest) {
+  return await repo.editCrateEntry(p_payload);
 }
 
 export async function getCrateStockReportByDate(p_date: string) {

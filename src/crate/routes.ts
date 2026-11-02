@@ -1,6 +1,6 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { routeNotFound } from '../common/error';
-import { getCrates, createCrate, getCrateSummaryByDate, getCrateSummaryFromLogByDate, editCrateSummary, getCrateStockReportByDate, getCrateLedger, getCrateVasuliSheet, getCrateVasuliList, editCrateVasuli, getCrateAuctionList, editCrateAuctionEntry, getPendingCrateSummary, getPendingCratesByVyapari, crateReturn, crateIssue } from './controller';
+import { getCrates, createCrate, getCrateSummaryByDate, editCrateSummary, editCrateEntry, getCrateStockReportByDate, getCrateLedger, getCrateVasuliSheet, getCrateVasuliList, editCrateVasuli, getCrateAuctionList, editCrateAuctionEntry, getPendingCrateSummary, getPendingCratesByVyapari, crateReturn, crateIssue } from './controller';
 
 
 export async function route(event: APIGatewayProxyEventV2) {
@@ -12,11 +12,6 @@ export async function route(event: APIGatewayProxyEventV2) {
 
   if (method === 'GET' && path === '/crate') {
     return getCrates();
-  }
-
-  // must be checked before '/crate/summary' — that prefix also matches this path
-  if (method === 'GET' && path.startsWith('/crate/summary-log')) {
-    return getCrateSummaryFromLogByDate(event);
   }
 
   if (method === 'GET' && path.startsWith('/crate/summary')) {
@@ -53,6 +48,10 @@ export async function route(event: APIGatewayProxyEventV2) {
 
   if (method === 'PUT' && path === '/crate/auction-entry') {
     return editCrateAuctionEntry(event);
+  }
+
+  if (method === 'PUT' && path === '/crate/entry') {
+    return editCrateEntry(event);
   }
 
   if (method === 'GET' && path.startsWith('/crate/pending-summary')) {

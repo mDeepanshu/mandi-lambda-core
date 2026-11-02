@@ -11,6 +11,7 @@ import {
   crateReturnBodySchema,
   createCrateBodySchema,
   editCrateAuctionEntryBodySchema,
+  editCrateEntryBodySchema,
   editCrateSummaryBodySchema,
   editCrateVasuliBodySchema,
   pendingCratesQuerySchema,
@@ -63,15 +64,15 @@ export async function editCrateSummary(event: APIGatewayProxyEventV2) {
   }
 }
 
-export async function getCrateSummaryFromLogByDate(event: APIGatewayProxyEventV2) {
+export async function editCrateEntry(event: APIGatewayProxyEventV2) {
   try {
-    const { p_date } = validateQuery(event, crateDateQuerySchema);
+    const body = validateBody(event, editCrateEntryBodySchema);
 
-    logger.info('Get crate summary from log', { date: p_date });
-    const data = await service.getCrateSummaryFromLogByDate(p_date);
+    logger.info('Edit crate entry', { id: body.id, crateId: body.crate_id, count: body.count });
+    const data = await service.editCrateEntry(body);
     return success(data);
   } catch (err) {
-    return handleError(err, 'Get crate summary from log by date error');
+    return handleError(err, 'Edit crate entry error');
   }
 }
 

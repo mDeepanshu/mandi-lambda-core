@@ -12,6 +12,7 @@ npx sls deploy --stage his                # Deploy to his (staging)
 npx sls deploy --stage hmb                # Deploy to hmb (production)
 npx sls invoke local -f auction --path src/auction/mock.json  # Invoke a function locally
 npm run seed:tts -- --stage dev           # Render the Hindi TTS clip alphabet into Supabase
+npm run sync:legacy -- --stage his --dry-run  # Reload his/hmb data from the legacy MySQL (read-only source)
 ```
 
 There is no test runner configured.
@@ -156,11 +157,17 @@ Crate (container) master.
 - `id` smallint PK (identity, unique), `crate_name` varchar, `total` smallint, `closing_amount` smallint
 
 ### `crate_transaction`
-Movement of crates to/from vyaparis.
+Movement of crates to/from vyaparis. **Append-only: one row per movement**
+(each manual issue/return line, each auction buyItem) — no unique key, no
+ON CONFLICT. Totals are always `SUM(crate_count)`; a single entry is edited or
+deleted by `id` (`PUT /crate/entry`). Do not reintroduce aggregation/upserts.
 - `id` bigint PK (identity, unique), `vyapari_id` → party, `crate_id` → crate
-- `crate_count` smallint, `parent_id` text, `date` date
+- `crate_count` smallint (ISSUE positive, RETURN negative), `parent_id` text (auction_id; null = manual), `date` date
 - `txn_type` varchar — `ISSUE | RETURN` (default `'ISSUE'`)
-- `created_at` timestamptz (default `now()`) — first-issue time; ON CONFLICT re-issues keep the original value
+- `created_at` timestamptz (default `now()`) — when the entry was made; day-total edits keep the earliest
+
+`crate_transaction_log` is a frozen archive from the old aggregated model (its
+trigger was dropped in `db/crate_append_only.sql`); nothing reads or writes it.
 
 ### `tts_clip`
 Manifest for pre-rendered Hindi text-to-speech clips. The auction UI announces

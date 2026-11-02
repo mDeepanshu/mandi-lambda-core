@@ -19,7 +19,7 @@ export type CrateIssueRequest = CrateReturnRequest;
 
 interface CrateEditItem {
   crate_id: number;
-  count: number; // absolute final count; 0 removes the crate row
+  count: number; // absolute final day total; replaces that crate's manual entries, 0 removes them
 }
 
 export interface EditCrateSummaryRequest {
@@ -48,4 +48,10 @@ export interface EditCrateAuctionEntryRequest {
   id: number; // crate_transaction row id, from GET /crate/auction-list
   crate_id: number;
   count: number; // absolute new count; 0 deletes the entry
+}
+
+export interface EditCrateEntryRequest {
+  id: number; // crate_transaction row id: entries[].id from /crate/summary, or id from /crate/ledger
+  crate_id: number;
+  count: number; // absolute crate count, positive for returns too; 0 deletes the entry
 }

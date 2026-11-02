@@ -50,7 +50,8 @@ export const editCrateSummaryBodySchema = z
       .array(
         z.object({
           crate_id: z.coerce.number().int().positive(),
-          // absolute final count for this crate on this date; 0 removes the row
+          // absolute final total for this crate on this date; replaces the
+          // crate's manual entries with one, 0 removes them
           count: z.coerce.number().int().min(0),
         })
       )
@@ -86,4 +87,7 @@ export const editCrateAuctionEntryBodySchema = z
     count: z.coerce.number().int().min(0),
   })
   .passthrough();
+
+// same shape, but for any entry (manual or auction, issue or return)
+export const editCrateEntryBodySchema = editCrateAuctionEntryBodySchema;
 

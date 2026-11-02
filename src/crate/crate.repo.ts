@@ -1,7 +1,7 @@
 import { supabase } from '../common/supabase';
 import { logger } from '../common/logger';
 import { badRequest, conflict } from '../common/error';
-import { CrateIssueRequest, CrateReturnRequest, EditCrateAuctionEntryRequest, EditCrateSummaryRequest, EditCrateVasuliRequest } from './crate.model';
+import { CrateIssueRequest, CrateReturnRequest, EditCrateAuctionEntryRequest, EditCrateEntryRequest, EditCrateSummaryRequest, EditCrateVasuliRequest } from './crate.model';
 
 export async function createCrate(
     crateName: string,
@@ -32,16 +32,6 @@ export async function getCrateSummaryByDate(p_date: string) {
     logger.debug('RPC: get_crate_summary_by_date', { p_date });
     const { data, error } = await supabase
         .rpc('get_crate_summary_by_date', {
-            p_date
-        });
-    if (error) throw error;
-    return data;
-}
-
-export async function getCrateSummaryFromLogByDate(p_date: string) {
-    logger.debug('RPC: get_crate_summary_by_date_from_log', { p_date });
-    const { data, error } = await supabase
-        .rpc('get_crate_summary_by_date_from_log', {
             p_date
         });
     if (error) throw error;
@@ -99,8 +89,8 @@ export async function getPendingCratesByVyapari(p_vyapari_id: string) {
 }
 
 export async function crateIssue(p_payload: CrateIssueRequest) {
-    // Aggregation lives in the RPC: same-day re-issues for a (vyapari, crate,
-    // date) combo are summed into the existing row via ON CONFLICT DO UPDATE.
+    // Append-only: each payload line becomes its own crate_transaction row
+    // (an entry); totals are summed by the readers.
     logger.debug('RPC: create_crate_issue', { vyapariId: p_payload.vyapariId });
     const { data, error } = await supabase
         .rpc('create_crate_issue', {
@@ -114,8 +104,9 @@ export async function crateIssue(p_payload: CrateIssueRequest) {
 }
 
 export async function editCrateSummary(p_payload: EditCrateSummaryRequest) {
-    // Absolute set: the RPC overwrites crate_count for the crate_ids sent and
-    // deletes the ones sent with count 0. Crates absent from the payload are left alone.
+    // Absolute set of the day's total: the RPC replaces the manual ISSUE entries
+    // for the crate_ids sent with one row (none for count 0). Crates absent from
+    // the payload are left alone. Single entries are edited via editCrateEntry.
     logger.debug('RPC: edit_crate_summary', { vyapariId: p_payload.vyapariId, date: p_payload.date });
     const { data, error } = await supabase
         .rpc('edit_crate_summary', {
@@ -139,8 +130,8 @@ export async function getCrateVasuliList(p_date: string) {
 }
 
 export async function editCrateVasuli(p_payload: EditCrateVasuliRequest) {
-    // Absolute set: the RPC overwrites the RETURN rows for the crate_ids sent and
-    // deletes the ones sent with count 0. The day's ISSUE rows are left alone.
+    // Absolute set: the RPC replaces the RETURN entries for the crate_ids sent
+    // with one row (none for count 0). The day's ISSUE rows are left alone.
     // With newVyapariId the crate_ids move to another vyapari instead.
     logger.debug('RPC: edit_crate_vasuli', { vyapariId: p_payload.vyapariId, newVyapariId: p_payload.newVyapariId, date: p_payload.date });
     const { data, error } = await supabase
@@ -177,8 +168,19 @@ export async function editCrateAuctionEntry(p_payload: EditCrateAuctionEntryRequ
         });
     if (error) {
         if (error.code === '23503') throw badRequest('Auction crate entry or crate not found', error.message);
-        // the pairing already has an entry for the target crate type
-        if (error.code === '23505') throw badRequest(error.message);
+        throw error;
+    }
+    return data;
+}
+
+export async function editCrateEntry(p_payload: EditCrateEntryRequest) {
+    logger.debug('RPC: edit_crate_entry', { id: p_payload.id, crateId: p_payload.crate_id });
+    const { data, error } = await supabase
+        .rpc('edit_crate_entry', {
+            p_payload
+        });
+    if (error) {
+        if (error.code === '23503') throw badRequest('Crate entry or crate not found', error.message);
         throw error;
     }
     return data;
