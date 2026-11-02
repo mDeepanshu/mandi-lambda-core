@@ -16,7 +16,7 @@ const listWindow = () => {
 // used by this suite, which makes vyapariId a safe scope on shared dev data.
 async function listTxns(vyapariId: string): Promise<any[]> {
   const body = unwrap<any>(await api.get(`/auction/list-auction-transaction?${listWindow()}`));
-  return (body?.auctionTransactions ?? []).filter((t: any) => t.vyapariId === vyapariId);
+  return (body ?? []).filter((t: any) => t.vyapariId === vyapariId);
 }
 
 async function createAuction(
@@ -699,7 +699,7 @@ describe('auction: edit/delete/validate/list input validation', () => {
         `/auction/list-auction-transaction?startDate=${encodeURIComponent(`${today()} 23:59:59`)}&endDate=${encodeURIComponent(`${today()} 00:00:00`)}`,
       ),
     );
-    expect(body?.auctionTransactions ?? []).toHaveLength(0);
+    expect(body ?? []).toHaveLength(0);
   });
 
   it('mark-transaction-validated counts freshly created unvalidated transactions', async () => {

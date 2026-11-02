@@ -7,6 +7,10 @@ import { getSeed, Seed } from './helpers/seed';
 // over the RPC rows, and `sum` is the day's total business -- the total of
 // every row's dayBill. (`sum` used to be a duplicate of closingAmountSum.)
 
+// dayBill comes back legacy-style: a comma-joined string ("820,1840", "" when none).
+const parseDayBill = (s?: string): number[] =>
+  (s ?? '').split(',').filter(Boolean).map((n) => Number(n) || 0);
+
 describe('auction ledger (vasuli sheet): sums equal the sum of rows', () => {
   it('openingAmountSum, closingAmountSum, and sum match the row data', async () => {
     const d = today();
@@ -16,7 +20,7 @@ describe('auction ledger (vasuli sheet): sums equal the sum of rows', () => {
     const openingSum = rows.reduce((sum, r) => sum + (Number(r.openingAmount) || 0), 0);
     const closingSum = rows.reduce((sum, r) => sum + (Number(r.closingAmount) || 0), 0);
     const dayBillSum = rows.reduce(
-      (sum, r) => sum + (r.dayBill ?? []).reduce((a: number, b: any) => a + (Number(b) || 0), 0),
+      (sum, r) => sum + parseDayBill(r.dayBill).reduce((a, b) => a + b, 0),
       0
     );
 
@@ -57,7 +61,7 @@ describe('auction ledger (vasuli sheet): sums equal the sum of rows', () => {
     const rows: any[] = body?.vasuliList ?? [];
     const closingSum = rows.reduce((sum, r) => sum + (Number(r.closingAmount) || 0), 0);
     const dayBillSum = rows.reduce(
-      (sum, r) => sum + (r.dayBill ?? []).reduce((a: number, b: any) => a + (Number(b) || 0), 0),
+      (sum, r) => sum + parseDayBill(r.dayBill).reduce((a, b) => a + b, 0),
       0
     );
     expect(Number(body.closingAmountSum)).toBeCloseTo(closingSum, 2);
@@ -97,7 +101,7 @@ async function ledgerRow(vyapariId: string, date = today()): Promise<LedgerRow> 
   return {
     openingAmount: Number(hit?.openingAmount ?? 0),
     closingAmount: Number(hit?.closingAmount ?? 0),
-    dayBill: (hit?.dayBill ?? []).map((n: any) => Number(n) || 0),
+    dayBill: parseDayBill(hit?.dayBill),
   };
 }
 
@@ -128,7 +132,7 @@ async function createAuction(
 async function listOn(day: string, vyapariId: string): Promise<any[]> {
   const qs = `startDate=${encodeURIComponent(`${day} 00:00:00`)}&endDate=${encodeURIComponent(`${day} 23:59:59`)}`;
   const body = unwrap<any>(await api.get(`/auction/list-auction-transaction?${qs}`));
-  return (body?.auctionTransactions ?? []).filter((t: any) => t.vyapariId === vyapariId);
+  return (body ?? []).filter((t: any) => t.vyapariId === vyapariId);
 }
 
 const shift = (days: number) => {
@@ -150,7 +154,7 @@ const wideWindow = () =>
 
 async function listTxns(vyapariId: string): Promise<any[]> {
   const body = unwrap<any>(await api.get(`/auction/list-auction-transaction?${wideWindow()}`));
-  return (body?.auctionTransactions ?? []).filter((t: any) => t.vyapariId === vyapariId);
+  return (body ?? []).filter((t: any) => t.vyapariId === vyapariId);
 }
 
 const txnIds = async (vyapariId: string): Promise<string[]> =>

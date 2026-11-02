@@ -27,22 +27,24 @@ export async function generateLedger(
 ) {
   const rows = await repo.generateAuctionLedger(startDate, endDate ?? startDate);
 
+  const openingAmountSum = (rows ?? []).reduce((s: number, r: any) => s + (Number(r.openingbalance) || 0), 0);
+  const closingAmountSum = (rows ?? []).reduce((s: number, r: any) => s + (Number(r.closingbalance) || 0), 0);
+  // the day's total business across every vyapari
+  const sum = (rows ?? []).reduce(
+    (s: number, r: any) => s + (r.daybill ?? []).reduce((a: number, b: any) => a + (Number(b) || 0), 0),
+    0
+  );
+
+  // dayBill is a comma-joined string ("820,1840", "" when none) to match the
+  // legacy API the frontend was built against
   const vasuliList = (rows ?? []).map((r: any) => ({
     partyId: r.partyid,
     partyName: r.partyname,
     openingAmount: r.openingbalance,
-    dayBill: r.daybill,
+    dayBill: (r.daybill ?? []).join(','),
     closingAmount: r.closingbalance,
     vyapariIdNo: r.vyapariidno,
   }));
-
-  const openingAmountSum = vasuliList.reduce((s: number, v: any) => s + (Number(v.openingAmount) || 0), 0);
-  const closingAmountSum = vasuliList.reduce((s: number, v: any) => s + (Number(v.closingAmount) || 0), 0);
-  // the day's total business across every vyapari
-  const sum = vasuliList.reduce(
-    (s: number, v: any) => s + (v.dayBill ?? []).reduce((a: number, b: any) => a + (Number(b) || 0), 0),
-    0
-  );
 
   return {
     vasuliList,
@@ -57,12 +59,21 @@ export const editAuctionTransaction = (
 ) =>
   repo.editAuctionTransaction(dto);
 
-export const listAuctionTransaction = (
+// The RPC returns { itemTotals, auctionTransactions }. Both legacy APIs the
+// frontends were built against returned the bare transaction array, so that is
+// the default; ?includeItemTotals=true opts into the full object.
+export async function listAuctionTransaction(
   startDate: string,
   endDate: string,
-  deviceId?: string | null
-) =>
-  repo.listAuctionTransaction(startDate, endDate, deviceId);
+  deviceId?: string | null,
+  includeItemTotals = false
+) {
+  const report = await repo.listAuctionTransaction(startDate, endDate, deviceId);
+  if (includeItemTotals) {
+    return { itemTotals: report?.itemTotals ?? [], auctionTransactions: report?.auctionTransactions ?? [] };
+  }
+  return report?.auctionTransactions ?? [];
+}
 
 export const deleteAuctionTransactions = (
   dto: DeleteAuctionTransactionDto

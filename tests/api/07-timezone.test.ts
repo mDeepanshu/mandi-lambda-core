@@ -94,7 +94,7 @@ describe('timezone: server-written timestamps are IST, not UTC', () => {
     const window = `startDate=${encodeURIComponent(`${day} 00:00:00`)}&endDate=${encodeURIComponent(`${day} 23:59:59`)}`;
 
     const idsBefore = new Set(
-      (unwrap<any>(await api.get(`/auction/list-auction-transaction?${window}`))?.auctionTransactions ?? [])
+      (unwrap<any>(await api.get(`/auction/list-auction-transaction?${window}`)) ?? [])
         .filter((t: any) => t.vyapariId === s.vyapariAId)
         .map((t: any) => t.auctionTransactionId),
     );
@@ -118,7 +118,7 @@ describe('timezone: server-written timestamps are IST, not UTC', () => {
     );
 
     const created = (
-      unwrap<any>(await api.get(`/auction/list-auction-transaction?${window}`))?.auctionTransactions ?? []
+      unwrap<any>(await api.get(`/auction/list-auction-transaction?${window}`)) ?? []
     ).filter((t: any) => t.vyapariId === s.vyapariAId && !idsBefore.has(t.auctionTransactionId));
     expect(created).toHaveLength(1);
 

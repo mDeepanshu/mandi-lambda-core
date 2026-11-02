@@ -344,7 +344,7 @@ describe('vyapari: ledger semantics', () => {
         await api.get(
           `/auction/list-auction-transaction?startDate=${encodeURIComponent(`${d} 00:00:00`)}&endDate=${encodeURIComponent(`${d} 23:59:59`)}`,
         ),
-      )?.auctionTransactions ?? []
+      ) ?? []
     )
       .filter((t: any) => t.vyapariId === s.vyapariBId)
       .map((t: any) => t.auctionTransactionId);
@@ -383,7 +383,7 @@ describe('vyapari: ledger semantics', () => {
         await api.get(
           `/auction/list-auction-transaction?startDate=${encodeURIComponent(`${d} 00:00:00`)}&endDate=${encodeURIComponent(`${d} 23:59:59`)}`,
         ),
-      )?.auctionTransactions ?? []
+      ) ?? []
     )
       .filter((t: any) => t.vyapariId === s.vyapariBId)
       .map((t: any) => t.auctionTransactionId)
@@ -419,7 +419,7 @@ async function todaysTxnIds(s: Seed): Promise<string[]> {
       `/auction/list-auction-transaction?startDate=${encodeURIComponent(`${d} 00:00:00`)}&endDate=${encodeURIComponent(`${d} 23:59:59`)}`,
     ),
   );
-  return (body?.auctionTransactions ?? [])
+  return (body ?? [])
     .filter((t: any) => t.vyapariId === s.vyapariAId)
     .map((t: any) => t.auctionTransactionId);
 }

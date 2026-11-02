@@ -46,6 +46,7 @@ export const listAuctionTransactionQuerySchema = z.object({
   startDate: nonEmptyString,
   endDate: nonEmptyString,
   deviceId: z.string().optional().transform(v => v?.trim() || undefined),
+  includeItemTotals: z.enum(['true', 'false']).optional(),
 });
 
 export const editAuctionTransactionBodySchema = z

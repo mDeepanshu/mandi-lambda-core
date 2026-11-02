@@ -1,5 +1,8 @@
 import { ResponseCodes, ResponseMessages } from './response';
 
+// HTTP API falls back to text/plain when a structured response has no Content-Type.
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
 export function success(
   body?: any,
   created = false
@@ -8,6 +11,7 @@ export function success(
     statusCode: created
       ? ResponseCodes.SUCCESSFULLY_CREATED
       : ResponseCodes.SUCCESS_CODE,
+    headers: JSON_HEADERS,
     body: JSON.stringify({
       responseCode: String(
         created
@@ -38,6 +42,7 @@ export function error(
 
   return {
     statusCode: code,
+    headers: JSON_HEADERS,
     body: JSON.stringify(responseBody),
   };
 }
