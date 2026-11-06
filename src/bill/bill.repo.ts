@@ -29,29 +29,26 @@ export async function getKisanBill(
   return data;
 }
 
+// The old server's VyapariBill entity as saved (db/legacy_parity_api.sql)
 export async function saveVyapariBill(bill: VyapariBill) {
-  logger.debug('RPC: save_vyapari_bill');
-  const { data, error } = await supabase.rpc('save_vyapari_bill', {
-    payload: bill,
-  });
+  logger.debug('RPC: legacy_save_vyapari_bill');
+  const { data, error } = await supabase.rpc('legacy_save_vyapari_bill', { p: bill });
   if (error) throw error;
   return data;
 }
 
+// A Spring Page of one bill (newest first), or null past the last one
 export async function getVyapariBill(
   vyapariId: string,
   billDate: string,
   index: number
 ) {
-  logger.debug('RPC: get_vyapari_bill_by_vyapari_id_and_date', { vyapariId, billDate, index });
-  const { data, error } = await supabase.rpc(
-    'get_vyapari_bill_by_vyapari_id_and_date',
-    {
-      vyapari_id: vyapariId,
-      bill_date: billDate,
-      bill_index: index,
-    }
-  );
+  logger.debug('RPC: legacy_get_vyapari_bill', { vyapariId, billDate, index });
+  const { data, error } = await supabase.rpc('legacy_get_vyapari_bill', {
+    p_vyapari_id: vyapariId,
+    p_bill_date: billDate,
+    p_index: index,
+  });
   if (error) throw error;
   return data;
 }

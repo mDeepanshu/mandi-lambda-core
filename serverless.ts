@@ -49,6 +49,7 @@ const originsByStage: Record<string, string[]> = {
     'https://auction-hmb.make73.com',
     'https://hmb-auction.make73.com',
     'https://hmb-application.make73.com',
+    'https://mandi-hmb.make73.com',
     // HMB Vyapari app (Firebase Hosting site hmb-vyapari + planned custom domain)
     'https://hmb-vyapari.web.app',
     'https://hmb-vyapari.firebaseapp.com',
@@ -59,10 +60,17 @@ const originsByStage: Record<string, string[]> = {
     'https://hiskisanbill.make73.com',
     'https://mandiauction.make73.com',
     'https://auction-hmb.make73.com',
+    'https://his-application.make73.com',
   ],
 };
 
 const allowedOrigins = originsByStage[stageArg] ?? ['*'];
+
+// The old server's mirror sends its edit/delete lookups and mark-validated
+// calls without a deviceid header (lambda.mirror.device-id is unset on both
+// App Runner services), so his/hmb accept a missing header until cutover.
+// Present-but-unapproved devices are rejected everywhere. Remove at cutover.
+const auctionDeviceHeaderOptional = stageArg === 'his' || stageArg === 'hmb';
 
 const serverlessConfiguration: AWS = {
   service: 'mandi-lambda-core',
@@ -144,6 +152,8 @@ const serverlessConfiguration: AWS = {
         { httpApi: { path: '/item/{proxy+}', method: 'post' } },
         { httpApi: { path: '/listItems', method: 'get' } },
         { httpApi: { path: '/createItem', method: 'post' } },
+        // the frontends' "add item" posts to the API root (old-server route)
+        { httpApi: { path: '/', method: 'post' } },
       ],
     },
     kisan: {
@@ -175,6 +185,12 @@ const serverlessConfiguration: AWS = {
     auction: {
       handler: 'src/auction/handler.handler',
       logRetentionInDays: 30,
+      // the 6s default timed out ~5% of his calls (cold DB cache on the day's
+      // ledger/list); HTTP API caps integrations at 30s
+      timeout: 29,
+      environment: {
+        AUCTION_DEVICE_HEADER_OPTIONAL: String(auctionDeviceHeaderOptional),
+      },
       events: [
         { httpApi: { path: '/auction', method: 'post' } },
         { httpApi: { path: '/auction/{proxy+}', method: 'get' } },
@@ -198,6 +214,9 @@ const serverlessConfiguration: AWS = {
         { httpApi: { path: '/bills/{proxy+}', method: 'get' } },
         { httpApi: { path: '/bills/{proxy+}', method: 'post' } },
         { httpApi: { path: '/bills/{proxy+}', method: 'patch' } },
+        // previous-bill dialog and bill save use the old server's root paths
+        { httpApi: { path: '/vyapari-bill', method: 'get' } },
+        { httpApi: { path: '/vyapari-bill', method: 'post' } },
       ],
     },
   },

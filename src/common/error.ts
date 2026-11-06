@@ -27,6 +27,9 @@ export const badRequest = (message: string = ResponseMessages.BAD_REQUEST_CODE, 
 export const notFound = (message: string = ResponseMessages.NOT_FOUND_MESSAGE, details?: unknown) =>
   new AppError(message, ResponseCodes.NOT_FOUND_CODE, details);
 
+export const unauthorized = (message: string, details?: unknown) =>
+  new AppError(message, ResponseCodes.UNAUTHORIZED_CODE, details);
+
 // 409 — the request is valid but would combine existing data, so it is held for
 // the caller to confirm. `details` carries the preview the client shows.
 export const conflict = (message: string = ResponseMessages.CONFLICT_MESSAGE, details?: unknown) =>

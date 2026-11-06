@@ -8,7 +8,8 @@ export const handler = async (event: APIGatewayProxyEventV2, context: Context) =
   const start = Date.now();
   const { method, path } = event.requestContext.http;
 
-  logger.info('Request received', { method, path });
+  // who: the device and the app (origin) behind every call
+  logger.info('Request received', { method, path, deviceId: event.headers?.deviceid, origin: event.headers?.origin });
   logger.info('Request payload', { body: event.body, query: event.queryStringParameters });
 
   try {

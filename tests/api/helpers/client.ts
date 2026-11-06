@@ -13,18 +13,29 @@ export interface ApiResult<T = unknown> {
 
 interface CallOpts {
   body?: unknown;
-  deviceId?: number | string;
+  /**
+   * deviceid header. Every /auction route requires an APPROVED device (the old
+   * server's DeviceIdFilter), so those default to the seeded test device;
+   * pass null to send no header at all.
+   */
+  deviceId?: number | string | null;
   headers?: Record<string, string>;
   /** Send this exact string as the body instead of JSON-serializing `body`. */
   rawBody?: string;
 }
 
 async function call<T>(method: string, path: string, opts: CallOpts = {}): Promise<ApiResult<T>> {
+  let deviceId = opts.deviceId;
+  if (deviceId === undefined && path.startsWith('/auction')) {
+    // lazy: seed.ts imports this module, and only calls non-/auction routes
+    const { getSeed } = await import('./seed');
+    deviceId = (await getSeed()).deviceId;
+  }
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(opts.deviceId != null ? { deviceid: String(opts.deviceId) } : {}),
+      ...(deviceId != null ? { deviceid: String(deviceId) } : {}),
       ...(opts.headers ?? {}),
     },
     body: opts.rawBody !== undefined

@@ -13,7 +13,8 @@ export async function createItem(event: APIGatewayProxyEventV2) {
 
     logger.info('Create items', { count: body.length });
     const result = await service.createItems(body);
-    return success(result, true);
+    // 200, not 201: the item masters treat only responseCode 200 as saved
+    return success(result);
   } catch (e) {
     return handleError(e, 'Create item error');
   }

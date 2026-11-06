@@ -40,7 +40,7 @@ async function findOrCreateParty(type: 'KISAN' | 'VYAPARI', name: string): Promi
       },
     ]),
   );
-  return String(created[0].party_id);
+  return String(created[0].partyId);
 }
 
 async function build(): Promise<Seed> {

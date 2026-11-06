@@ -4,7 +4,8 @@ import { createItem, listItems } from './controller';
 export async function route(event: any) {
   const { method, path } = event.requestContext.http;
 
-  if (method === 'POST' && path === '/item/createItem') {
+  // the frontends add items with POST to the API root, as on the old server
+  if (method === 'POST' && (path === '/' || path === '/item/createItem' || path === '/createItem')) {
     return createItem(event);
   }
 

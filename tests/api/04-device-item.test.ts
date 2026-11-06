@@ -153,9 +153,11 @@ describe('item: create and list behavior', () => {
     const items = unwrap<any[]>(await api.get('/item/listItems'));
     let mine = items.find((i) => i.name === 'TEST_ITEM_EDGE');
     if (!mine) {
-      const r = await api.post('/item/createItem', [{ itemId: 'TEST_ITEM_EDGE_ID', name: 'TEST_ITEM_EDGE' }]);
-      expect(r.status).toBe(201);
-      expect(r.body.responseMessage).toBe('Saved Successfully');
+      // the item masters post to the API root and accept only responseCode 200
+      const r = await api.post('/', [{ itemId: 'TEST_ITEM_EDGE_ID', name: 'TEST_ITEM_EDGE' }]);
+      expect(r.status).toBe(200);
+      expect(r.body.responseCode).toBe('200');
+      expect(r.body.responseBody).toEqual([{ itemId: 'TEST_ITEM_EDGE_ID', name: 'TEST_ITEM_EDGE' }]);
     }
     const after = unwrap<any[]>(await api.get('/item/listItems'));
     mine = after.find((i) => i.name === 'TEST_ITEM_EDGE');
@@ -163,11 +165,22 @@ describe('item: create and list behavior', () => {
     expect(mine.itemId).toBe('TEST_ITEM_EDGE_ID');
   });
 
-  it('duplicate itemId is rejected and does not duplicate the row', async () => {
-    const r = await api.post('/item/createItem', [{ itemId: 'TEST_ITEM_EDGE_ID', name: 'TEST_ITEM_EDGE_DUP' }]);
-    expect(r.status).toBeGreaterThanOrEqual(400);
-    const items = unwrap<any[]>(await api.get('/item/listItems'));
+  it('re-posting an itemId updates it in place (JPA save) and never duplicates the row', async () => {
+    unwrap(await api.post('/', [{ itemId: 'TEST_ITEM_EDGE_ID', name: 'TEST_ITEM_EDGE_RENAMED' }]));
+    let items = unwrap<any[]>(await api.get('/item/listItems'));
+    expect(items.filter((i) => i.itemId === 'TEST_ITEM_EDGE_ID')).toEqual([{ itemId: 'TEST_ITEM_EDGE_ID', name: 'TEST_ITEM_EDGE_RENAMED' }]);
+    unwrap(await api.post('/', [{ itemId: 'TEST_ITEM_EDGE_ID', name: 'TEST_ITEM_EDGE' }]));
+    items = unwrap<any[]>(await api.get('/item/listItems'));
     expect(items.filter((i) => i.itemId === 'TEST_ITEM_EDGE_ID')).toHaveLength(1);
+  });
+
+  it('listItems is in case-insensitive itemId order (the old MySQL primary-key order)', async () => {
+    const ids = unwrap<any[]>(await api.get('/listItems')).map((i) => i.itemId);
+    const sorted = [...ids].sort((a, b) => {
+      const x = a.toLowerCase(), y = b.toLowerCase();
+      return x < y ? -1 : x > y ? 1 : a < b ? -1 : a > b ? 1 : 0;
+    });
+    expect(ids).toEqual(sorted);
   });
 
   it('listItems rows are {itemId, name} string pairs', async () => {
@@ -199,7 +212,7 @@ describe('item: create and list behavior', () => {
     ].filter((want) => !items.some((i) => i.itemId === want.itemId));
     if (missing.length) {
       const r = await api.post('/item/createItem', missing);
-      expect(r.status).toBe(201);
+      expect(r.status).toBe(200);
     }
     const after = unwrap<any[]>(await api.get('/item/listItems'));
     expect(after.some((i) => i.itemId === 'TEST_ITEM_BATCH1_ID')).toBe(true);

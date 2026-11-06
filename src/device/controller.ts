@@ -30,7 +30,7 @@ export async function listDevices(event: APIGatewayProxyEventV2) {
     let statusList: DeviceStatus[];
 
     if (!status) {
-      statusList = ['REQUESTED', 'REJECTED', 'APPROVED'];
+      statusList = ['REQUESTED', 'REJECTED', 'APPROVED', 'DELETED'];
     } else if (Array.isArray(status)) {
       statusList = status as DeviceStatus[];
     } else {

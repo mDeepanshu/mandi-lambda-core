@@ -4,7 +4,8 @@ import { getSeed, Seed } from './helpers/seed';
 import { owed } from './helpers/party';
 
 // Cross-checks between the three vyapari money views for the same data:
-//   generateBill:  itemTotal = rate * quantity (chungi excluded), Σ = billTotal,
+//   generateBill:  itemTotal = (rate + chungi) * quantity in whole rupees
+//                  (the old server's VyapariBillResponseDTO), Σ = billTotal,
 //                  currentOutstanding = party.owed_amount
 //   ledger:        dr = (rate + chungi) * quantity, cr = vasuli amount,
 //                  closing = opening + Σdr - Σcr = party.owed_amount (endDate = today)
@@ -63,7 +64,7 @@ describe('vyapari bill and ledger: numbers agree across views', () => {
     );
     // and a vasuli of 120
     const vasuli = unwrap<any[]>(
-      await api.post('/party/vasuliTrasaction', [
+      await api.post('/party/vasuliTrasaction?confirmDuplicate=true', [
         { vyapariId: s.vyapariAId, date: `${d}T12:00:00`, amount: 120, remark: `TEST_LEDGER_${stamp}` },
       ]),
     );
@@ -72,12 +73,12 @@ describe('vyapari bill and ledger: numbers agree across views', () => {
     // owed moved by (40+2)*5 - 120 = +90
     expect((await owed(s.vyapariAId)) - baseline).toBeCloseTo(210 - 120, 2);
 
-    // bill: +rate*qty = +200, chungi excluded; Σ itemTotal = billTotal;
+    // bill: +(rate+chungi)*qty = +210; Σ itemTotal = billTotal;
     // currentOutstanding tracks owed_amount
     const billAfter = unwrap<any>(
       await api.get(`/vyapari/generateBill?vyapariId=${s.vyapariAId}&date=${d}`),
     );
-    expect(Number(billAfter.billTotal)).toBeCloseTo(billTotalBefore + 40 * 5, 2);
+    expect(Number(billAfter.billTotal)).toBeCloseTo(billTotalBefore + (40 + 2) * 5, 2);
     const flatItemTotal = (billAfter.billList ?? [])
       .flat()
       .reduce((sum: number, item: any) => sum + Number(item.itemTotal ?? 0), 0);
@@ -95,17 +96,18 @@ describe('vyapari bill and ledger: numbers agree across views', () => {
     );
     expect(Number(ledgerAfter.closingAmount)).toBeCloseTo(baseline + 90, 2);
 
-    // ledger-list (selected vyaparis) returns a flat transaction array whose
-    // dr/cr sums for this vyapari must match the single-vyapari ledger
+    // ledger-list (today's-all-ledger print): one ledger per vyapari, which
+    // must equal the single-vyapari ledger line for line and in its balances
     const listSelected = unwrap<any[]>(
       await api.post(`/vyapari/ledger-list?startDate=${d}&endDate=${d}`, [s.vyapariAId]),
     );
-    const mineSelected = (listSelected ?? []).filter((t: any) => t.vyapari_id === s.vyapariAId);
-    expect(mineSelected.length).toBeGreaterThanOrEqual(1);
-    const selDr = mineSelected.reduce((sum, t) => sum + Number(t.dr ?? 0), 0);
-    const selCr = mineSelected.reduce((sum, t) => sum + Number(t.cr ?? 0), 0);
-    expect(selDr).toBeCloseTo(after.dr, 2);
-    expect(selCr).toBeCloseTo(after.cr, 2);
+    expect(listSelected).toHaveLength(1);
+    const mine = listSelected[0];
+    expect(mine.vyapariId).toBe(s.vyapariAId);
+    expect(mine.vyapariName).toBe('TEST_VYAPARI_AUTO_A');
+    expect(Number(mine.closingAmount)).toBeCloseTo(Number(ledgerAfter.closingAmount), 2);
+    expect(Number(mine.openingAmount)).toBeCloseTo(Number(ledgerAfter.openingAmount), 2);
+    expect(mine.transactions.map(({ vyapariId, ...t }: any) => t)).toEqual(ledgerAfter.transactions);
 
     // neutralize: delete the auction txn, zero the vasuli
     const newTxns = (await todaysTxnIds(s)).filter((id) => !txnsBefore.includes(id));
@@ -123,8 +125,28 @@ describe('vyapari bill and ledger: numbers agree across views', () => {
     expect(await owed(s.vyapariAId)).toBeCloseTo(baseline, 2);
   });
 
-  // NOTE: /bills/vyapari-bill (snapshot save/get) is pinned as a dead endpoint
-  // in 08-contract-mismatches — its RPCs don't exist in any stage's database.
+  it('a saved vyapari bill comes back from /vyapari-bill as a one-bill Spring page, newest first', async () => {
+    const s = await getSeed();
+    const billDate = '2000-01-03'; // a fixed past day, so real bills are never touched
+    const before = unwrap<any>(await api.get(`/vyapari-bill?vyapariId=${s.vyapariAId}&billDate=${billDate}&index=0`));
+    const count = before?.totalElements ?? 0;
+
+    // what Vyapari-Bill.js posts: billList rows as received plus extras with no column
+    await api.post('/vyapari-bill', {
+      previous_remaining: 10, total: '25', vyapariId: s.vyapariAId, vyapariName: 'TEST_VYAPARI_AUTO_A', billDate,
+      vyapariBillItems: [{ itemName: 'TEST_ITEM_AUTO', bag: 1, rate: 12.5, quantity: 2, itemTotal: 25, partyName: 'x' }],
+    });
+
+    const page = unwrap<any>(await api.get(`/vyapari-bill?vyapariId=${s.vyapariAId}&billDate=${billDate}&index=0`));
+    expect(page).toMatchObject({ totalElements: count + 1, totalPages: count + 1, number: 0, size: 1, first: true });
+    expect(page.content[0]).toMatchObject({ vyapariId: s.vyapariAId, vyapariName: 'TEST_VYAPARI_AUTO_A', billDate, currentOutstanding: null });
+    expect(page.content[0].vyapariBillItems).toEqual([
+      expect.objectContaining({ itemName: 'TEST_ITEM_AUTO', bag: 1, rate: 12.5, quantity: 2, itemTotal: 25 }),
+    ]);
+    // past the last bill: null, which the dialog shows as "No Previous Bills"
+    const past = await api.get(`/vyapari-bill?vyapariId=${s.vyapariAId}&billDate=${billDate}&index=${count + 1}`);
+    expect(past.body.responseBody ?? null).toBeNull();
+  });
 });
 
 describe('vyapari: query and body validation', () => {
@@ -150,13 +172,23 @@ describe('vyapari: query and body validation', () => {
     expect(r.status).toBe(400);
   });
 
-  it.each([
-    ['missing vyapari_id_param', { amount_param: 100 }],
-    ['missing amount_param', { vyapari_id_param: 'X' }],
-    ['non-numeric amount_param', { vyapari_id_param: 'X', amount_param: 'lots' }],
-  ])('notify-vasuli rejects %s with 400 before any message is sent', async (_label, body) => {
-    const r = await api.post('/vyapari/notify-vasuli', body);
-    expect(r.status).toBe(400);
+  // NotifyVasuliDto as the frontends send it. WhatsApp sending is retired:
+  // the endpoint only records the notified amount.
+  it('notify-vasuli accepts the frontend body and sends nothing', async () => {
+    const s = await getSeed();
+    const r = await api.post('/vyapari/notify-vasuli', {
+      name: 'TEST_VYAPARI_AUTO_A', vyapariId: s.vyapariAId, idNo: '-', contact: '9990000001',
+      message: '321', date: '04/11/2026', remark: '-', templateName: 'payment_receipt3',
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.responseBody ?? null).toBeNull();
+  });
+
+  it('notify-vasuli without vyapariId (vasuli-list screen) still answers 200', async () => {
+    const r = await api.post('/vyapari/notify-vasuli', {
+      name: 'x', idNo: '-', contact: '9990000001', message: '5', date: '04/11/2026', remark: '-', templateName: 'edit_vasuli',
+    });
+    expect(r.status).toBe(200);
   });
 });
 
@@ -364,7 +396,7 @@ describe('vyapari: ledger semantics', () => {
       ),
     );
     const vasuliB = unwrap<any[]>(
-      await api.post('/party/vasuliTrasaction', [
+      await api.post('/party/vasuliTrasaction?confirmDuplicate=true', [
         { vyapariId: s.vyapariBId, date: `${d}T12:00:00`, amount: 25, remark: `TEST_ISO_${stamp}` },
       ]),
     );
@@ -400,15 +432,35 @@ describe('vyapari: ledger semantics', () => {
     );
   });
 
-  it('ledger-list returns rows only for the requested vyaparis', async () => {
+  it('ledger-list returns ledgers only for the requested vyaparis', async () => {
     const s = await getSeed();
     const d = today();
     const rows = unwrap<any[]>(
       await api.post(`/vyapari/ledger-list?startDate=${d}&endDate=${d}`, [s.vyapariAId]),
     );
-    for (const t of rows ?? []) {
-      expect(t.vyapari_id).toBe(s.vyapariAId);
+    for (const ledger of rows ?? []) {
+      expect(ledger.vyapariId).toBe(s.vyapariAId);
+      for (const t of ledger.transactions) expect(t.vyapariId).toBe(s.vyapariAId);
     }
+  });
+
+  it('ledger-list-all-vyapari lists the vyaparis with business in the window', async () => {
+    const s = await getSeed();
+    const d = today();
+    const txnsBefore = await todaysTxnIds(s);
+    unwrap(
+      await api.post(
+        '/auction',
+        [{ kisanId: s.kisanId, itemId: s.itemId, auctionDate: `${d}T12:00:00`, buyItems: [{ vyapariId: s.vyapariAId, rate: 1, quantity: 1, bag: 1, chungi: 0 }] }],
+        { deviceId: s.deviceId },
+      ),
+    );
+    const all = unwrap<any[]>(await api.get(`/vyapari/ledger-list-all-vyapari?startDate=${d}&endDate=${d}`));
+    const me = all.find((p) => p.partyId === s.vyapariAId);
+    expect(me).toMatchObject({ name: 'TEST_VYAPARI_AUTO_A' });
+    expect(typeof me.idNo).toBe('string');
+    const newTxns = (await todaysTxnIds(s)).filter((id) => !txnsBefore.includes(id));
+    unwrap(await api.del('/auction/delete-auction-transaction', { auctionTransactionIds: newTxns }));
   });
 });
 

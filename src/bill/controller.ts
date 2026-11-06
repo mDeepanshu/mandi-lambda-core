@@ -43,7 +43,7 @@ export async function saveVyapariBill(event: APIGatewayProxyEventV2) {
   try {
     const body = validateBody(event, saveVyapariBillBodySchema);
 
-    logger.info('Save vyapari bill', { vyapariId: body.vyapari_id });
+    logger.info('Save vyapari bill', { vyapariId: body.vyapariId });
     return success(await service.saveVyapariBill(body));
   } catch (e) {
     return handleError(e, 'Save vyapari bill snapshot error');

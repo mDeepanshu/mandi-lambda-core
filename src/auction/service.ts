@@ -1,5 +1,7 @@
 import * as repo from './auction.repo';
 import { toIstNaive } from '../common/datetime';
+import { auditOwed, vyapariIdsOfTransactions } from '../common/owed-audit';
+import { logger } from '../common/logger';
 import {
   AddAuctionDto,
   DeleteAuctionTransactionDto,
@@ -15,11 +17,29 @@ import {
 const withIstDate = <T extends { auctionDate?: string }>(rows: T[]): T[] =>
   rows.map((r) => (r.auctionDate ? { ...r, auctionDate: toIstNaive(r.auctionDate) } : r));
 
-export const addAuction = (
+const buyerIds = (auctions: AddAuctionDto[]) =>
+  auctions.flatMap((a) => (a.buyItems ?? []).map((b) => (b as { vyapariId?: string }).vyapariId));
+
+// One `true` per saved auction, the old server's response. The RPC is
+// all-or-nothing, so reaching the map means every auction is saved -- either
+// by this call or by an earlier attempt of the same request (a retry).
+export async function addAuction(
   auctions: AddAuctionDto[],
   deviceId: string
-) =>
-  repo.addAuction(withIstDate(auctions), deviceId);
+) {
+  const result = await auditOwed('auction create', buyerIds(auctions), () =>
+    repo.addAuction(withIstDate(auctions), deviceId)
+  );
+  if (result?.alreadySaved) {
+    // a retry or a second tab re-posting the queue; nothing was duplicated
+    logger.info('Auction create skipped lots already saved', {
+      deviceId,
+      created: result.created,
+      alreadySaved: result.alreadySaved,
+    });
+  }
+  return auctions.map(() => true);
+}
 
 export async function generateLedger(
   startDate: string,
@@ -54,10 +74,15 @@ export async function generateLedger(
   };
 }
 
+// old vyapari (looked up) and new vyapari: a reassignment moves money between them
 export const editAuctionTransaction = (
   dto: EditAuctionTransactionDTO
 ) =>
-  repo.editAuctionTransaction(dto);
+  auditOwed(
+    'auction transaction edit',
+    vyapariIdsOfTransactions([dto.auctionTransactionId]).then((ids) => [...ids, dto.vyapariId]),
+    () => repo.editAuctionTransaction(dto)
+  );
 
 // The RPC returns { itemTotals, auctionTransactions }. Both legacy APIs the
 // frontends were built against returned the bare transaction array, so that is
@@ -78,23 +103,35 @@ export async function listAuctionTransaction(
 export const deleteAuctionTransactions = (
   dto: DeleteAuctionTransactionDto
 ) =>
-  repo.deleteAuctionTransactions(dto);
+  auditOwed('auction transaction delete', vyapariIdsOfTransactions(dto.auctionTransactionIds), () =>
+    repo.deleteAuctionTransactions(dto)
+  );
 
+// deviceId (the header) is the device of any recreated auction that does not
+// name its own, as on the old server's addAuction
 export const editAuction = async (
   dto: EditAuctionDTO,
-  // deviceId: string
+  deviceId: string
 ) => {
-  // await repo.deleteAuctionTransactions(
-  //   dto.deleteAuctionTransactionDto
-  // );
-  // await repo.addAuction(dto.addAuctionDtos, deviceId);
   // same IST normalisation as addAuction -- this path recreates auction rows
-  await repo.editAuction({ ...dto, addAuctionDtos: withIstDate(dto.addAuctionDtos) });
+  await auditOwed(
+    'auction edit (delete + re-add)',
+    vyapariIdsOfTransactions(dto.deleteAuctionTransactionDto.auctionTransactionIds).then((ids) => [
+      ...ids,
+      ...buyerIds(dto.addAuctionDtos),
+    ]),
+    () => repo.editAuction({ ...dto, addAuctionDtos: withIstDate(dto.addAuctionDtos) }, deviceId)
+  );
 };
 
-export const markTransactionValidated = (
+export async function markTransactionValidated(
   fromDate: string,
   toDate: string,
-  vyapariId: string
-) =>
-  repo.markTransactionValidated(fromDate, toDate, vyapariId);
+  vyapariId: string | undefined,
+  bulk: boolean
+) {
+  if (bulk) return repo.markBulkTransactionValidated(fromDate, toDate);
+  // the old server ran `vyapari_id = NULL` here: matches nothing
+  if (!vyapariId) return 0;
+  return repo.markTransactionValidated(fromDate, toDate, vyapariId);
+}

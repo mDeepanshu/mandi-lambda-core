@@ -47,13 +47,15 @@ const MASTERS: TableSpec[] = [
     select: 'id, creation_date, name, status, updation_time',
   },
   {
-    // legacy `commission` is `commission_rate` here; legacy `chungi` has no
-    // Postgres column. Explicit names matter: the two tables' trailing columns
-    // are in a different order.
+    // legacy `commission` is `commission_rate` here. Only his's legacy party
+    // has the `chungi` bit (the auction screen reads it); hmb's never had it.
+    // Explicit names matter: the two tables' trailing columns are in a
+    // different order.
     table: 'party',
     select: `party_id, id_no, contact, name, owed_amount, party_type, max_loan_days, last_vasuli_date,
              ledger_order, last_notified_amount, party_code, kisan_type, auto_ledger,
-             commission AS commission_rate`,
+             commission AS commission_rate${stage === 'his' ? ', chungi' : ''}`,
+    map: (row) => (stage === 'his' ? { ...row, chungi: bit(row.chungi) } : row),
   },
 ];
 
@@ -232,6 +234,18 @@ async function main() {
       console.log(`  renumbered Supabase-only party "${party_id}" (id_no clashed with legacy)`);
     }
 
+    // A party legacy created but the mirror never delivered leaves every later
+    // mirrored party one id_no behind legacy (hmb, 2026-11). The row-by-row
+    // upsert below would then collide midway; park the shifted ones on a
+    // negative number first so legacy's numbers can land.
+    const { rowCount: parked } = await db.query(
+      `UPDATE party p SET id_no = -p.id_no
+       FROM unnest($1::text[], $2::int[]) AS l(party_id, id_no)
+       WHERE p.party_id = l.party_id AND p.id_no <> l.id_no`,
+      [parties.map((row) => row.party_id), parties.map((row) => row.id_no)],
+    );
+    if (parked) console.log(`  parked ${parked} parties whose id_no differs from legacy`);
+
     // A few legacy vasulis carry vyapari_id = ''. A stage that has the ''
     // placeholder party keeps them as-is; elsewhere they'd break the FK.
     const { rowCount: hasPlaceholder } = await db.query(`SELECT 1 FROM party WHERE party_id = ''`);
@@ -253,10 +267,14 @@ async function main() {
     await db.query('DELETE FROM kisan_bill');
 
     console.log('loading…');
+    // legacy rows carry their own txn_no (or none); the numbering trigger must
+    // not renumber them. Transactional, like the device_details one above.
+    await db.query('ALTER TABLE auction_transaction DISABLE TRIGGER trg_auction_txn_no');
     for (const spec of RELOADED) {
       await insertRows(db, spec, legacy.get(spec.table)!);
       console.log(`  loaded ${spec.table}`);
     }
+    await db.query('ALTER TABLE auction_transaction ENABLE TRIGGER trg_auction_txn_no');
 
     for (const spec of MASTERS) {
       const key = PRIMARY_KEY[spec.table];

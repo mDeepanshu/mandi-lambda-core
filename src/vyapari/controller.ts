@@ -28,19 +28,11 @@ export async function generateBill(event: APIGatewayProxyEventV2) {
 export async function generateLedger(event: APIGatewayProxyEventV2) {
   try {
     const { vyapariId, startDate, endDate } = validateQuery(event, ledgerQuerySchema);
-    const vyapariCode = event.headers?.vyaparicode;
-    const filter = !!vyapariCode;
+    // the Vyapari app sends vyapariCode: validated lines only, no opening balance
+    const vyapariApp = !!event.headers?.vyaparicode;
 
-    logger.info('Generate vyapari ledger', { vyapariId, startDate, endDate });
-    const ledger = await service.generateLedger(
-      vyapariId,
-      startDate,
-      endDate,
-      filter
-    );
-
-    if (filter) ledger.openingAmount = null;
-    return success(ledger);
+    logger.info('Generate vyapari ledger', { vyapariId, startDate, endDate, vyapariApp });
+    return success(await service.generateLedger(vyapariId, startDate, endDate, vyapariApp));
   } catch (e) {
     return handleError(e, 'Generate vyapari ledger error');
   }
@@ -107,7 +99,7 @@ export async function notifyVasuli(event: APIGatewayProxyEventV2) {
   try {
     const body = validateBody(event, notifyVasuliBodySchema);
 
-    logger.info('Notify vasuli', { vyapariId: body.vyapari_id_param });
+    logger.info('Notify vasuli', { vyapariId: body.vyapariId, templateName: body.templateName });
     return success(await service.notifyVasuli(body));
   } catch (e) {
     return handleError(e, 'Notify vasuli error');

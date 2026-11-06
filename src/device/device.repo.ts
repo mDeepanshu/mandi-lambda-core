@@ -14,15 +14,25 @@ export async function insertDevice(name: string): Promise<DeviceDetailsDTO> {
   return data as DeviceDetailsDTO;
 }
 
-export async function fetchDevicesByStatus(statusList: DeviceStatus[]): Promise<DeviceDetailsDTO[]> {
-  logger.debug('Table: device_details select', { statusList });
-  const { data, error } = await supabase
-    .from('device_details')
-    .select('*')
-    .in('status', statusList);
+// camelCase entities in id order, as the old server listed them
+export async function fetchDevicesByStatus(statusList: DeviceStatus[]) {
+  logger.debug('RPC: legacy_list_devices', { statusList });
+  const { data, error } = await supabase.rpc('legacy_list_devices', { p_statuses: statusList });
 
   if (error) throw error;
-  return data as DeviceDetailsDTO[];
+  return data;
+}
+
+export async function fetchDeviceStatus(id: number): Promise<DeviceStatus | null> {
+  logger.debug('Table: device_details select status', { id });
+  const { data, error } = await supabase
+    .from('device_details')
+    .select('status')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data?.status as DeviceStatus) ?? null;
 }
 
 export async function updateDeviceStatus(id: number, status: DeviceStatus): Promise<DeviceDetailsDTO> {

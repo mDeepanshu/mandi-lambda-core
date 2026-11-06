@@ -2,7 +2,7 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import * as service from './service';
 import { handleError } from '../common/error';
 import { logger } from '../common/logger';
-import { success } from '../common/response.util';
+import { legacyResult, success } from '../common/response.util';
 import { validateBody, validateQuery } from '../common/validation';
 import {
   createPartyBodySchema,
@@ -17,10 +17,9 @@ import {
 export async function createParty(event: APIGatewayProxyEventV2) {
   try {
     const body = validateBody(event, createPartyBodySchema);
-
     logger.info('Create party', { count: body.length });
     const result = await service.createParty(body);
-    return success(result, true); // 201 CREATED
+    return success(result, true); // 201 CREATED — the frontends check for it
   } catch (e) {
     return handleError(e, 'Create party error');
   }
@@ -29,10 +28,9 @@ export async function createParty(event: APIGatewayProxyEventV2) {
 export async function updateParty(event: APIGatewayProxyEventV2) {
   try {
     const body = validateBody(event, updatePartyBodySchema);
-
     logger.info('Update party', { id: body.id });
-    const result = await service.updateParty(body);
-    return success(result);
+    const { code, body: message } = await service.updateParty(body);
+    return legacyResult(code, message);
   } catch (e) {
     return handleError(e, 'Update party error');
   }
@@ -41,7 +39,6 @@ export async function updateParty(event: APIGatewayProxyEventV2) {
 export async function getPartyById(event: APIGatewayProxyEventV2) {
   try {
     const { partyId } = validateQuery(event, getPartyByIdQuerySchema);
-
     logger.info('Get party by id', { partyId });
     const result = await service.getPartyById(partyId);
     return success(result);
@@ -53,7 +50,6 @@ export async function getPartyById(event: APIGatewayProxyEventV2) {
 export async function listAllParties(event: APIGatewayProxyEventV2) {
   try {
     const { partyType } = validateQuery(event, listAllPartiesQuerySchema);
-
     logger.info('List all parties', { partyType });
     const result = await service.listAllParties(partyType);
     return success(result);
@@ -68,32 +64,31 @@ export async function validatePartyCode(event: APIGatewayProxyEventV2) {
       event,
       validatePartyCodeQuerySchema
     );
-
     logger.info('Validate party code', { mobileNumber, idNo });
     const result = await service.validatePartyCode(
       mobileNumber,
       partyCode,
       idNo
     );
-
     return success(result);
   } catch (e) {
     return handleError(e, 'Validate party code error');
   }
 }
 
+// The duplicate warning travels as HTTP 200 + responseCode "400": the ledger
+// screen opens its "continue?" dialog only on that shape. Both frontends always
+// send confirmDuplicate; only the old server's mirror leaves it out, posting
+// vasulis it has already confirmed — so absent means confirmed (the old server
+// defaulted to false, which would refuse every second same-day mirrored row).
 export async function vasuliTransaction(event: APIGatewayProxyEventV2) {
   try {
     const body = validateBody(event, vasuliTransactionBodySchema);
     const { confirmDuplicate } = validateQuery(event, vasuliTransactionQuerySchema);
-
-    logger.info('Vasuli transaction', { count: body.length });
-    const result = await service.vasuliTransaction(
-      body,
-      confirmDuplicate === 'true'
-    );
-
-    return success(result);
+    logger.info('Vasuli transaction', { count: body.length, confirmDuplicate });
+    if (!body.length) return success(null);
+    const { code, body: result } = await service.vasuliTransaction(body, confirmDuplicate !== 'false');
+    return legacyResult(code, result);
   } catch (e) {
     return handleError(e, 'Vasuli transaction error');
   }

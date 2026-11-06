@@ -8,7 +8,10 @@ import { owed } from './helpers/party';
 //   edit (same vyapari): owed_amount += old.amount - new.amount
 //   edit (reassign A->B): A.owed_amount += old.amount, B.owed_amount -= new.amount
 
-const postVasuli = (rows: unknown, qs = '') => api.post(`/party/vasuliTrasaction${qs}`, rows);
+// The old server refuses a second same-day vasuli for a vyapari unless
+// confirmDuplicate=true (see the duplicate test), and these tests post many —
+// so inserts confirm by default, like mandi-auction always does.
+const postVasuli = (rows: unknown, qs = '?confirmDuplicate=true') => api.post(`/party/vasuliTrasaction${qs}`, rows);
 
 async function zeroVasuli(id: string, vyapariId: string, remark: string) {
   unwrap(
@@ -71,53 +74,81 @@ describe('vasuli lifecycle: owed_amount deltas', () => {
     expect(await owed(s.vyapariBId)).toBeCloseTo(baseB, 2);
   });
 
-  it('duplicate handling: owed_amount moves only by accepted inserts; confirmDuplicate=true never errors', async () => {
+  it('duplicate warning: a second same-day vasuli waits for confirmDuplicate=true', async () => {
     const s = await getSeed();
-    const baseA = await owed(s.vyapariAId);
     const stamp = Date.now();
     const payload = [
       { vyapariId: s.vyapariAId, date: `${today()}T12:00:00`, amount: 250, remark: `TEST_DUP_${stamp}` },
     ];
-
     const ids: string[] = [];
 
     const first = await postVasuli(payload);
     expect(first.status).toBe(200);
-    ids.push(String((first.body.responseBody as any[])?.[0]?.id));
+    ids.push(String((first.body.responseBody as any[])[0].id));
+    const afterFirst = await owed(s.vyapariAId);
 
-    // identical re-post without confirmDuplicate: either rejected (owed unchanged)
-    // or accepted (owed moves) — pin that owed matches whichever happened
-    const second = await postVasuli(payload);
-    let accepted = 1;
-    if (second.status === 200 && (second.body.responseBody as any[])?.[0]?.id) {
-      accepted += 1;
-      ids.push(String((second.body.responseBody as any[])[0].id));
-    }
-    expect((await owed(s.vyapariAId)) - baseA).toBeCloseTo(-250 * accepted, 2);
+    // unconfirmed: the old server's warning, as HTTP 200 + responseCode "400"
+    // with a text body — the ledger screen's "continue?" dialog needs exactly that
+    const second = await postVasuli(payload, '?confirmDuplicate=false');
+    expect(second.status).toBe(200);
+    expect(second.body.responseCode).toBe('400');
+    expect(second.body.responseBody).toMatch(/^TEST_VYAPARI_AUTO_A already has \d+ vasulis, are you sure you want to continue\?$/);
+    expect(await owed(s.vyapariAId)).toBeCloseTo(afterFirst, 2);
 
-    // with confirmDuplicate=true the API must not error
-    const third = await postVasuli(payload, '?confirmDuplicate=true');
-    expect(third.status).toBe(200);
-    if ((third.body.responseBody as any[])?.[0]?.id) {
-      accepted += 1;
-      ids.push(String((third.body.responseBody as any[])[0].id));
-    }
-    expect((await owed(s.vyapariAId)) - baseA).toBeCloseTo(-250 * accepted, 2);
+    // confirmed: saved, strictly "200" (mandi-auction compares with ===)
+    const third = await postVasuli(payload);
+    expect(third.body.responseCode).toBe('200');
+    ids.push(String((third.body.responseBody as any[])[0].id));
+    expect((await owed(s.vyapariAId)) - afterFirst).toBeCloseTo(-250, 2);
 
-    // today's vasuli list contains what was accepted, and its totalVasuli
-    // equals the sum of the listed amounts
+    // no flag at all = confirmed: only the old server's mirror omits it, and it
+    // posts vasulis the old server already confirmed
+    const mirrored = await api.post('/party/vasuliTrasaction', payload);
+    expect(mirrored.body.responseCode).toBe('200');
+    ids.push(String((mirrored.body.responseBody as any[])[0].id));
+
+    // today's list has both, and totalVasuli adds whole rupees of every row
     const d = today();
     const listBody = unwrap<any>(await api.get(`/vyapari/vasuli-list?startDate=${d}&endDate=${d}`));
     const list: any[] = listBody?.vasuliList ?? [];
-    const mine = list.filter((v: any) => ids.includes(String(v.id)));
-    expect(mine.length).toBe(accepted);
-    const sumOfAmounts = list.reduce((sum, v) => sum + Number(v.amount ?? 0), 0);
-    expect(Number(listBody.totalVasuli)).toBeCloseTo(sumOfAmounts, 2);
+    expect(list.filter((v: any) => ids.includes(String(v.id)))).toHaveLength(3);
+    const truncSum = list.reduce((sum, v) => sum + Math.trunc(Number(v.amount ?? 0)), 0);
+    expect(Number(listBody.totalVasuli)).toBe(truncSum);
 
-    // neutralize drift: zero out every accepted insert
     for (const id of ids) {
       await zeroVasuli(id, s.vyapariAId, `TEST_DUP_${stamp}_ZEROED`);
     }
+    expect(await owed(s.vyapariAId)).toBeCloseTo(afterFirst + 250, 2);
+  });
+
+  // the old server's mirror: snake was_null, legacy datetime, remark "", no flag
+  it('a mirrored vasuli payload is accepted', async () => {
+    const s = await getSeed();
+    const r = await api.post('/party/vasuliTrasaction', [
+      { vyapariId: s.vyapariAId, date: `${today()} 10:15:00`, amount: 40, remark: '', was_null: false },
+    ]);
+    expect(r.body.responseCode).toBe('200');
+    await zeroVasuli(String((r.body.responseBody as any[])[0].id), s.vyapariAId, `TEST_MIRROR_Z_${Date.now()}`);
+  });
+
+  it('a vasuli without an amount is a pending request: owed untouched, listed as pending today', async () => {
+    const s = await getSeed();
+    const baseA = await owed(s.vyapariAId);
+    // the ledger's VASULI button: amount null, date as new Date().toJSON()
+    const rows = unwrap<any[]>(
+      await postVasuli([{ amount: null, date: new Date().toJSON(), vyapariId: s.vyapariAId, remark: null, name: 'x' }]),
+    );
+    expect(await owed(s.vyapariAId)).toBeCloseTo(baseA, 2);
+    const pending = unwrap<any[]>(await api.get('/vyapari/pending-vasuli?showToday=true'));
+    const mine = pending.find((p) => p.id === rows[0].id);
+    expect(mine).toBeTruthy();
+    expect(mine.amount).toBeNull();
+    expect(typeof mine.idNo).toBe('string');
+
+    // filling it in (pending-vasuli screen) debits it once
+    unwrap(await api.put('/vyapari/edit-vasuli', { amount: '120', vyapariId: s.vyapariAId, remark: '', id: rows[0].id }));
+    expect((await owed(s.vyapariAId)) - baseA).toBeCloseTo(-120, 2);
+    await zeroVasuli(String(rows[0].id), s.vyapariAId, `TEST_PENDING_Z_${Date.now()}`);
     expect(await owed(s.vyapariAId)).toBeCloseTo(baseA, 2);
   });
 });
@@ -129,22 +160,34 @@ describe('vasuli: POST body validation', () => {
     ['plain object instead of array', valid],
     ['missing vyapariId', [{ ...valid, vyapariId: undefined }]],
     ['empty vyapariId', [{ ...valid, vyapariId: '' }]],
-    ['missing date', [{ ...valid, date: undefined }]],
-    ['empty date', [{ ...valid, date: '' }]],
-    ['missing amount', [{ ...valid, amount: undefined }]],
     ['non-numeric amount', [{ ...valid, amount: 'lots' }]],
-    ['empty remark (must be omitted or non-empty)', [{ ...valid, remark: '' }]],
   ])('rejects %s with 400', async (_label, body) => {
     const r = await postVasuli(body);
     expect(r.status).toBe(400);
   });
 
-  it.each([
-    ['confirmDuplicate=banana', '?confirmDuplicate=banana'],
-    ['confirmDuplicate=TRUE (case-sensitive)', '?confirmDuplicate=TRUE'],
-  ])('rejects %s with 400', async (_label, qs) => {
-    const r = await postVasuli([{ ...valid }], qs);
+  it('rejects confirmDuplicate=banana with 400', async () => {
+    const r = await postVasuli([{ ...valid }], '?confirmDuplicate=banana');
     expect(r.status).toBe(400);
+  });
+
+  // payloads the old server took and the frontends / its mirror really send
+  it('accepts an empty remark (mandi-auction, mirror) and stores it as ""', async () => {
+    const s = await getSeed();
+    const rows = unwrap<any[]>(
+      await postVasuli([{ vyapariId: s.vyapariAId, date: `${today()}T12:00:00`, amount: 3, remark: '' }]),
+    );
+    const d = today();
+    const list = unwrap<any>(await api.get(`/vyapari/vasuli-list?startDate=${d}&endDate=${d}`)).vasuliList;
+    expect(list.find((v: any) => v.id === rows[0].id)?.remark).toBe('');
+    await zeroVasuli(String(rows[0].id), s.vyapariAId, `TEST_EMPTYREMARK_Z_${Date.now()}`);
+  });
+
+  it('accepts confirmDuplicate=TRUE (Spring parsed booleans case-insensitively)', async () => {
+    const s = await getSeed();
+    const r = await postVasuli([{ vyapariId: s.vyapariAId, date: `${today()}T12:00:00`, amount: 2 }], '?confirmDuplicate=TRUE');
+    expect(r.body.responseCode).toBe('200');
+    await zeroVasuli(String((r.body.responseBody as any[])[0].id), s.vyapariAId, `TEST_TRUE_Z_${Date.now()}`);
   });
 
   it('empty array short-circuits to 200 with null body', async () => {
@@ -241,14 +284,12 @@ describe('vasuli: edit-vasuli validation and neutral edits', () => {
     ['missing id', { amount: 10 }],
     ['empty id', { id: '', amount: 10 }],
     ['non-numeric amount', { id: '00000000-0000-0000-0000-000000000000', amount: 'x' }],
-    ['empty remark', { id: '00000000-0000-0000-0000-000000000000', amount: 1, remark: '' }],
-    ['non-boolean wasNull', { id: '00000000-0000-0000-0000-000000000000', amount: 1, wasNull: 'yes' }],
   ])('rejects %s with 400', async (_label, body) => {
     const r = await api.put('/vyapari/edit-vasuli', body);
     expect(r.status).toBe(400);
   });
 
-  it('editing an unknown vasuli id does not silently succeed with data', async () => {
+  it('editing an unknown vasuli id -> 404, owed_amount untouched', async () => {
     const s = await getSeed();
     const baseA = await owed(s.vyapariAId);
     const r = await api.put('/vyapari/edit-vasuli', {
@@ -256,9 +297,20 @@ describe('vasuli: edit-vasuli validation and neutral edits', () => {
       amount: 999,
       vyapariId: s.vyapariAId,
     });
-    // pin: whatever the RPC does with a ghost id, it must not touch owed_amount
+    expect(r.status).toBe(404);
     expect(await owed(s.vyapariAId)).toBeCloseTo(baseA, 2);
-    expect([200, 404, 500]).toContain(r.status);
+  });
+
+  it('edit answers the saved vasuli (mandi-auction needs a truthy body), camelCase', async () => {
+    const s = await getSeed();
+    const rows = unwrap<any[]>(
+      await postVasuli([{ vyapariId: s.vyapariAId, date: `${today()}T12:00:00`, amount: 9, remark: 'r' }]),
+    );
+    const saved = unwrap<any>(
+      await api.put('/vyapari/edit-vasuli', { id: rows[0].id, amount: '0', vyapariId: s.vyapariAId, remark: '' }),
+    );
+    expect(saved).toMatchObject({ id: rows[0].id, vyapariId: s.vyapariAId, remark: '', wasNull: false });
+    expect(Number(saved.amount)).toBe(0);
   });
 
   it('re-submitting the same amount with a new remark is money-neutral', async () => {
@@ -424,20 +476,5 @@ describe('vasuli: lists', () => {
         remark: `TEST_YDAY_Z_${stamp}`,
       }),
     );
-  });
-
-  it('confirmDuplicate=false behaves like omitting the flag', async () => {
-    const s = await getSeed();
-    const baseA = await owed(s.vyapariAId);
-    const stamp = Date.now();
-    const rows = unwrap<any[]>(
-      await postVasuli(
-        [{ vyapariId: s.vyapariAId, date: `${today()}T12:00:00`, amount: 33, remark: `TEST_CDF_${stamp}` }],
-        '?confirmDuplicate=false',
-      ),
-    );
-    expect((await owed(s.vyapariAId)) - baseA).toBeCloseTo(-33, 2);
-    await zeroVasuli(String(rows[0].id), s.vyapariAId, `TEST_CDF_Z_${stamp}`);
-    expect(await owed(s.vyapariAId)).toBeCloseTo(baseA, 2);
   });
 });

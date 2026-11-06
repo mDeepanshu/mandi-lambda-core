@@ -1,7 +1,7 @@
 import { z } from 'zod';
+import { optionalAmount } from '../party/validation';
 
 const nonEmptyString = z.string().trim().min(1);
-const optionalString = nonEmptyString.optional();
 
 export const generateBillQuerySchema = z.object({
   vyapariId: nonEmptyString,
@@ -22,34 +22,37 @@ export const dateRangeQuerySchema = z.object({
   endDate: nonEmptyString,
 });
 
-// Covers all optional fields supported by the edit_vasuli RPC
-export const editVasuliBodySchema = z.object({
-  id: nonEmptyString,
-  amount: z.coerce.number().optional(),
-  date: optionalString,
-  vyapariId: optionalString,
-  remark: optionalString,
-  wasNull: z.boolean().optional(),
-});
+// Forwarded to legacy_edit_vasuli, which applies the old server's rules: a key
+// that is present is written as sent ("" / null amount = pending again), an
+// absent one keeps its value. The frontends send amounts as text.
+export const editVasuliBodySchema = z
+  .object({
+    id: nonEmptyString,
+    amount: optionalAmount,
+    vyapariId: z.string().nullish(),
+    remark: z.string().nullish(),
+    date: z.string().nullish(),
+  })
+  .passthrough();
 export type EditVasuliBodySchemaType = z.infer<typeof editVasuliBodySchema>;
 
+// the old server bound a missing showToday as false
 export const pendingVasuliQuerySchema = z.object({
   showToday: z.enum(['true', 'false']).optional(),
 });
 
-// notify_vasuli RPC requires vyapari_id_param + amount_param;
-// remaining fields are optional notification-template data
+// NotifyVasuliDto. vyapariId is missing on the vasuli-list screen's call; the
+// old server then updated no party.
 export const notifyVasuliBodySchema = z
   .object({
-    vyapari_id_param: nonEmptyString,
-    amount_param: z.coerce.number(),
-    name: optionalString,
-    contact: optionalString,
-    message: optionalString,
-    date: optionalString,
-    remark: optionalString,
-    idNo: optionalString,
-    templateName: optionalString,
+    vyapariId: z.string().nullish(),
+    name: z.string().nullish(),
+    contact: z.string().nullish(),
+    message: z.union([z.string(), z.number()]).nullish(),
+    date: z.string().nullish(),
+    remark: z.string().nullish(),
+    idNo: z.union([z.string(), z.number()]).nullish(),
+    templateName: z.string().nullish(),
   })
   .passthrough();
 export type NotifyVasuliBodySchemaType = z.infer<typeof notifyVasuliBodySchema>;

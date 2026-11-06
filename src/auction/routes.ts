@@ -1,9 +1,16 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
-import { routeNotFound } from '../common/error';
+import { handleError, routeNotFound } from '../common/error';
 import * as c from './controller';
+import { requireApprovedDevice } from './device-guard';
 
 export async function route(event: APIGatewayProxyEventV2) {
   const { method, path } = event.requestContext.http;
+
+  try {
+    await requireApprovedDevice(event);
+  } catch (e) {
+    return handleError(e, 'Auction device check error');
+  }
 
   if (method === 'POST' && path === '/auction') return c.postAuction(event);
   if (method === 'GET' && path === '/auction/generate-ledger') return c.generateLedger(event);

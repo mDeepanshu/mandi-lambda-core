@@ -152,9 +152,9 @@ describe('timezone: server-written timestamps are IST, not UTC', () => {
     const devices = unwrap<any[]>(await api.get('/device/listDevices?status=APPROVED')) ?? [];
     const device = devices.find((d) => Number(d.id) === Number(s.deviceId));
     expect(device).toBeDefined();
-    expect(device.updation_time).toBeTruthy();
+    expect(device.updationTime).toBeTruthy();
 
-    expect(Math.abs(skewMinutes(device.updation_time))).toBeLessThan(TOLERANCE / MINUTE);
+    expect(Math.abs(skewMinutes(device.updationTime))).toBeLessThan(TOLERANCE / MINUTE);
   });
 
   it('vasuli stores the date it is given, untouched by any zone conversion', async () => {
@@ -165,7 +165,7 @@ describe('timezone: server-written timestamps are IST, not UTC', () => {
     // vasuli.date comes from the payload rather than the server clock -- pinned
     // so a future "let's convert everything" change cannot silently shift it.
     const rows = unwrap<any[]>(
-      await api.post('/party/vasuliTrasaction', [
+      await api.post('/party/vasuliTrasaction?confirmDuplicate=true', [
         { vyapariId: s.vyapariBId, date: `${day}T09:30:00`, amount: 50, remark: `TEST_TZ_${stamp}` },
       ]),
     );

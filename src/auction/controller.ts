@@ -18,7 +18,7 @@ import {
 export async function postAuction(event: APIGatewayProxyEventV2) {
   try {
     const body = validateBody(event, addAuctionBodySchema);
-    if (body.length === 0) return success(null);
+    if (body.length === 0) return success([]);
     const { deviceid } = validateHeaders(event, deviceIdHeaderSchema);
 
     logger.info('Post auction', { count: body.length, deviceId: deviceid });
@@ -85,10 +85,10 @@ export async function deleteAuctionTransaction(event: APIGatewayProxyEventV2) {
 export async function editAuction(event: APIGatewayProxyEventV2) {
   try {
     const body = validateBody(event, editAuctionBodySchema);
-    validateHeaders(event, deviceIdHeaderSchema);
+    const { deviceid } = validateHeaders(event, deviceIdHeaderSchema);
 
     logger.info('Edit auction', { deleteCount: body.deleteAuctionTransactionDto.auctionTransactionIds.length, addCount: body.addAuctionDtos.length });
-    await service.editAuction(body);
+    await service.editAuction(body, deviceid);
     return success(null);
   } catch (e) {
     return handleError(e, 'Edit auction error');
@@ -97,17 +97,18 @@ export async function editAuction(event: APIGatewayProxyEventV2) {
 
 export async function markTransactionValidated(event: APIGatewayProxyEventV2) {
   try {
-    const { fromDate, toDate, vyapariId } = validateQuery(
+    const { fromDate, toDate, vyapariId, bulk } = validateQuery(
       event,
       markTransactionValidatedQuerySchema
     );
 
-    logger.info('Mark transactions validated', { fromDate, toDate, vyapariId });
+    logger.info('Mark transactions validated', { fromDate, toDate, vyapariId, bulk });
     return success(
       await service.markTransactionValidated(
         fromDate,
         toDate,
-        vyapariId
+        vyapariId,
+        bulk === 'true'
       )
     );
   } catch (e) {

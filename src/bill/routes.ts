@@ -10,10 +10,11 @@ export async function route(event: any) {
   if (method === 'GET' && path === '/bills/kisan-bill')
     return c.getKisanBill(event);
 
-  if (method === 'POST' && path === '/bills/vyapari-bill')
+  // the frontends call the old server's root path; /bills/... kept for callers of the lambda's own
+  if (method === 'POST' && (path === '/vyapari-bill' || path === '/bills/vyapari-bill'))
     return c.saveVyapariBill(event);
 
-  if (method === 'GET' && path === '/bills/vyapari-bill')
+  if (method === 'GET' && (path === '/vyapari-bill' || path === '/bills/vyapari-bill'))
     return c.getVyapariBill(event);
 
   if (method === 'PATCH' && path === '/bills/autoSaveBills')

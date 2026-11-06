@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-const deviceStatusSchema = z.enum(['REQUESTED', 'REJECTED', 'APPROVED']);
+// DeviceDetails.Status — mandi-auction lists REJECTED,DELETED devices
+const deviceStatusSchema = z.enum(['REQUESTED', 'REJECTED', 'APPROVED', 'DELETED']);
 
 export const registerDeviceBodySchema = z.object({
   name: z.string().trim().min(1),
@@ -13,7 +14,7 @@ export const listDevicesQuerySchema = z.object({
     .min(1)
     .refine(
       (value) => value.split(',').every((s) => deviceStatusSchema.safeParse(s).success),
-      'status must contain REQUESTED, REJECTED, or APPROVED'
+      'status must contain REQUESTED, REJECTED, APPROVED or DELETED'
     )
     .optional(),
 });

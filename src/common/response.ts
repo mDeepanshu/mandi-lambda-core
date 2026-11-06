@@ -3,6 +3,7 @@ export enum ResponseCodes {
   SUCCESSFULLY_CREATED = 201,
   SOMETHING_WENT_WRONG = 500,
   BAD_REQUEST_CODE = 400,
+  UNAUTHORIZED_CODE = 401,
   NOT_FOUND_CODE = 404,
   CONFLICT_CODE = 409,
   // upstream provider failures (e.g. the TTS engine) — distinguished from our

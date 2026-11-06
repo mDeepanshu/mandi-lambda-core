@@ -1,63 +1,45 @@
 import { supabase } from '../common/supabase';
 import { logger } from '../common/logger';
+import { conflict, notFound } from '../common/error';
 import {
+  CreatePartyBodySchemaType,
   UpdatePartyBodySchemaType,
   VasuliTransactionBodySchemaType,
 } from './validation';
-import { InsertPartyDTO } from './party.models';
+import { LegacyResult } from './party.models';
 
-export async function insertParties(parties: InsertPartyDTO[]) {
-  logger.debug('Table: party insert', { count: parties.length });
-  const { data, error } = await supabase
-    .from('party')
-    .insert(parties)
-    .select();
+// The legacy_* functions (db/legacy_parity_api.sql) reproduce the old Spring
+// server's party endpoints exactly; see that file for the per-field rules.
 
-  if (error) throw error;
+export async function createParties(parties: CreatePartyBodySchemaType) {
+  logger.debug('RPC: legacy_create_parties', { count: parties.length });
+  const { data, error } = await supabase.rpc('legacy_create_parties', { p_payload: parties });
+  if (error) {
+    if (error.code === '23505') throw conflict('A party with this partyId already exists');
+    throw error;
+  }
   return data;
 }
 
-export async function updateParty(party: UpdatePartyBodySchemaType) {
-  const modiParty = {
-    contact: party.contact,
-    name: party.name,
-    max_loan_days: party.maxLoanDays,
-    ledger_order: party.ledgerOrder,
-    last_notified_amount: party.lastNotifiedAmount,
-    party_code: party.partyCode,
-  };
-
-  logger.debug('Table: party update', { partyId: party.id });
-  const { data, error } = await supabase
-    .from('party')
-    .update(modiParty)
-    .eq('party_id', party.id)
-    .select()
-    .single();
-
+export async function updateParty(party: UpdatePartyBodySchemaType): Promise<LegacyResult> {
+  logger.debug('RPC: legacy_update_party', { partyId: party.id });
+  const { data, error } = await supabase.rpc('legacy_update_party', { p: party });
   if (error) throw error;
-  return data;
+  return data as LegacyResult;
 }
 
 export async function fetchPartyById(partyId: string) {
-  logger.debug('Table: party select by id', { partyId });
-  const { data, error } = await supabase
-    .from('party')
-    .select('*')
-    .eq('party_id', partyId)
-    .single();
-
+  logger.debug('RPC: legacy_party_entity', { partyId });
+  const { data, error } = await supabase.rpc('legacy_party_entity', { p_party_id: partyId });
   if (error) throw error;
+  if (data == null) throw notFound(`Party ${partyId} not found`);
   return data;
 }
 
-export async function fetchAllParties(partyType?: string) {
-  const partyTypeParam =
-    partyType === 'KISAN' ? 0 : partyType === 'VYAPARI' ? 1 : null;
-
-  logger.debug('RPC: get_all_parties', { partyType });
-  const { data, error } = await supabase.rpc('get_all_parties', {
-    party_type_param: partyTypeParam,
+export async function fetchAllParties(partyType?: 'KISAN' | 'VYAPARI') {
+  logger.debug('RPC: legacy_list_parties', { partyType });
+  const { data, error } = await supabase.rpc('legacy_list_parties', {
+    p_party_type: partyType === 'KISAN' ? 0 : partyType === 'VYAPARI' ? 1 : null,
   });
   if (error) throw error;
   return data;
@@ -82,29 +64,18 @@ export async function validatePartyCode(
   return data;
 }
 
-//not checked
-export async function vasuliTransaction(
+// Atomic in the RPC: the duplicate check, every insert and each vyapari's
+// owed_amount. {code: 400, body: warning} when an unconfirmed duplicate stops
+// it, else {code: 200, body: [{ id, vyapariId, amount }]} in request order.
+export async function insertVasulies(
   transactions: VasuliTransactionBodySchemaType,
   confirmDuplicate: boolean
-) {
-  if (!transactions.length) {
-    return null;
-  }
-
-  // Atomic in the RPC: inserts every payment and decrements each vyapari's
-  // owed_amount. Returns [{ id, vyapariId, amount }] for the caller to map
-  // payments to their generated vasuli ids.
-  const p_payload = transactions.map((t) => ({
-    vyapariId: t.vyapariId,
-    date: t.date,
-    amount: t.amount,
-    remark: t.remark,
-    was_null: t.was_null,
-  }));
-
-  logger.debug('RPC: insert_vasuli_bulk', { count: p_payload.length });
-  const { data, error } = await supabase.rpc('insert_vasuli_bulk', { p_payload });
-
-  if (error && !confirmDuplicate) throw error;
-  return data;
+): Promise<LegacyResult> {
+  logger.debug('RPC: legacy_insert_vasulies', { count: transactions.length, confirmDuplicate });
+  const { data, error } = await supabase.rpc('legacy_insert_vasulies', {
+    p_payload: transactions,
+    p_confirm_duplicate: confirmDuplicate,
+  });
+  if (error) throw error;
+  return data as LegacyResult;
 }

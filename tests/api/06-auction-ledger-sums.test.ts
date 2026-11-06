@@ -194,7 +194,7 @@ describe('auction ledger: opening is before the day, closing is after it', () =>
     const stamp = Date.now();
 
     const rows = unwrap<any[]>(
-      await api.post('/party/vasuliTrasaction', [
+      await api.post('/party/vasuliTrasaction?confirmDuplicate=true', [
         { vyapariId: s.vyapariAId, date: `${today()}T12:00:00`, amount: 300, remark: `TEST_LEDGER_${stamp}` },
       ]),
     );
@@ -276,7 +276,7 @@ describe('auction ledger: opening is before the day, closing is after it', () =>
 
     // vasuli honours the date it is given, so pin it to the auction's day
     const rows = unwrap<any[]>(
-      await api.post('/party/vasuliTrasaction', [
+      await api.post('/party/vasuliTrasaction?confirmDuplicate=true', [
         { vyapariId: s.vyapariAId, date: `${day}T12:00:00`, amount: 90, remark: `TEST_LEDGER_NET_${stamp}` },
       ]),
     );

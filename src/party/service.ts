@@ -1,31 +1,22 @@
 import * as repo from './party.repo';
+import { auditOwed } from '../common/owed-audit';
 import {
   CreatePartyBodySchemaType,
   UpdatePartyBodySchemaType,
   VasuliTransactionBodySchemaType,
 } from './validation';
 
-export const createParty = (parties: CreatePartyBodySchemaType) => {
-  const mapped = parties.map((party) => ({
-    party_id: party.partyId,
-    name: party.name,
-    contact: party.contact,
-    party_type: party.partyType === 'KISAN' ? 0 : 1,
-    owed_amount: party.owedAmount,
-    max_loan_days: party.maxLoanDays,
-    ledger_order: party.ledgerOrder,
-    party_code: party.partyCode,
-  }));
-  return repo.insertParties(mapped);
-};
+export const createParty = (parties: CreatePartyBodySchemaType) =>
+  auditOwed('party create', parties.map((p) => p.partyId), () => repo.createParties(parties));
 
+// hmb's edit can set owed_amount
 export const updateParty = (party: UpdatePartyBodySchemaType) =>
-  repo.updateParty(party);
+  auditOwed('party edit', [party.id as string | undefined], () => repo.updateParty(party));
 
 export const getPartyById = (partyId: string) =>
   repo.fetchPartyById(partyId);
 
-export const listAllParties = (partyType?: string) =>
+export const listAllParties = (partyType?: 'KISAN' | 'VYAPARI') =>
   repo.fetchAllParties(partyType);
 
 export const validatePartyCode = (
@@ -39,4 +30,6 @@ export const vasuliTransaction = (
   transactions: VasuliTransactionBodySchemaType,
   confirmDuplicate: boolean
 ) =>
-  repo.vasuliTransaction(transactions, confirmDuplicate);
+  auditOwed('vasuli insert', transactions.map((t) => t.vyapariId), () =>
+    repo.insertVasulies(transactions, confirmDuplicate)
+  );

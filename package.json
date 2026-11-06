@@ -8,7 +8,8 @@
     "seed:tts": "ts-node --project tsconfig.json scripts/seed-tts-clips.ts",
     "sync:legacy": "ts-node --project tsconfig.json scripts/sync-legacy.ts",
     "test:api": "vitest run",
-    "test": "vitest run"
+    "test": "vitest run",
+    "activity": "ts-node --project tsconfig.json scripts/activity-log.ts"
   },
   "engines": {
     "node": ">=14.15.0"

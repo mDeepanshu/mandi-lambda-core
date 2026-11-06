@@ -11,9 +11,9 @@ const listWindow = () => {
   return `startDate=${encodeURIComponent(`${d} 00:00:00`)}&endDate=${encodeURIComponent(`${d} 23:59:59`)}`;
 };
 
-// No deviceId filter: edit RPCs recreate rows without carrying the device id,
-// so device-scoped listings can miss them. The TEST_ vyaparis are only ever
-// used by this suite, which makes vyapariId a safe scope on shared dev data.
+// No deviceId filter: a listing scoped to the seed device would miss rows
+// recreated under another device. The TEST_ vyaparis are only ever used by
+// this suite, which makes vyapariId a safe scope on shared dev data.
 async function listTxns(vyapariId: string): Promise<any[]> {
   const body = unwrap<any>(await api.get(`/auction/list-auction-transaction?${listWindow()}`));
   return (body ?? []).filter((t: any) => t.vyapariId === vyapariId);
@@ -537,39 +537,71 @@ describe('auction: delete edge cases', () => {
   });
 });
 
-describe('auction: POST /auction header validation', () => {
+// Old server's DeviceIdFilter on /auction/*: no header -> 400, anything but an
+// APPROVED device id -> 401 "Invalid deviceId". Applies to every route.
+describe('auction: deviceid header guard', () => {
   it('missing deviceid header -> 400', async () => {
     const s = await getSeed();
-    const r = await api.post('/auction', [
-      { kisanId: s.kisanId, itemId: s.itemId, buyItems: [{ vyapariId: s.vyapariAId, rate: 1, quantity: 1 }] },
-    ]);
-    expect(r.status).toBe(400);
-  });
-
-  it('non-numeric deviceid header -> 400', async () => {
-    const s = await getSeed();
     const r = await api.post(
       '/auction',
       [{ kisanId: s.kisanId, itemId: s.itemId, buyItems: [{ vyapariId: s.vyapariAId, rate: 1, quantity: 1 }] }],
-      { headers: { deviceid: 'abc' } },
+      { deviceId: null },
     );
     expect(r.status).toBe(400);
   });
 
-  it('decimal deviceid header -> 400 (must be all digits)', async () => {
+  it('missing header is rejected on read routes too', async () => {
+    const r = await api.get(`/auction/list-auction-transaction?${listWindow()}`, { deviceId: null });
+    expect(r.status).toBe(400);
+  });
+
+  it.each([
+    ['non-numeric', 'abc'],
+    ['decimal', '12.5'],
+    ['nonexistent', '999999999'],
+  ])('%s deviceid header -> 401', async (_label, header) => {
     const s = await getSeed();
     const r = await api.post(
       '/auction',
       [{ kisanId: s.kisanId, itemId: s.itemId, buyItems: [{ vyapariId: s.vyapariAId, rate: 1, quantity: 1 }] }],
-      { headers: { deviceid: '12.5' } },
+      { headers: { deviceid: header } },
     );
-    expect(r.status).toBe(400);
+    expect(r.status).toBe(401);
   });
 
-  it('empty auction array short-circuits to 200 success(null) without needing the header', async () => {
+  it('a registered but not APPROVED device -> 401', async () => {
+    const devices = unwrap<any[]>(await api.get('/device/listDevices?status=REQUESTED,REJECTED,APPROVED')) ?? [];
+    let device = devices.find((d) => d.name === 'TEST_DEVICE_UNAPPROVED');
+    if (!device) {
+      device = unwrap<any>(await api.post('/device/register', { name: 'TEST_DEVICE_UNAPPROVED' }));
+      if (Array.isArray(device)) device = device[0];
+    }
+    unwrap(await api.put(`/device/${device.id}/status?status=REJECTED`));
+    const r = await api.get(`/auction/list-auction-transaction?${listWindow()}`, { deviceId: device.id });
+    expect(r.status).toBe(401);
+  });
+
+  it('empty auction array -> 200 with an empty list (one boolean per auction)', async () => {
     const r = await api.post('/auction', []);
     expect(r.status).toBe(200);
-    expect(r.body.responseBody ?? null).toBeNull();
+    expect(r.body.responseBody).toEqual([]);
+  });
+
+  it('POST /auction answers one true per saved auction, like the old server', async () => {
+    const s = await getSeed();
+    const baseline = await owed(s.vyapariAId);
+    const before = (await listTxns(s.vyapariAId)).map((t) => t.auctionTransactionId);
+    const one = { kisanId: s.kisanId, itemId: s.itemId, auctionDate: `${today()}T12:00:00` };
+    const body = unwrap(
+      await api.post('/auction', [
+        { ...one, buyItems: [{ vyapariId: s.vyapariAId, rate: 3, quantity: 1, bags: 1 }] },
+        { ...one, buyItems: [{ vyapariId: s.vyapariAId, rate: 4, quantity: 1, bags: 1 }] },
+      ]),
+    );
+    expect(body).toEqual([true, true]);
+    const mine = (await listTxns(s.vyapariAId)).filter((t) => !before.includes(t.auctionTransactionId));
+    await deleteTxns(mine.map((t) => t.auctionTransactionId));
+    expect(await owed(s.vyapariAId)).toBeCloseTo(baseline, 2);
   });
 });
 
@@ -652,10 +684,14 @@ describe('auction: edit/delete/validate/list input validation', () => {
   });
 
   it('edit-auction without the deviceid header -> 400', async () => {
-    const r = await api.patch('/auction/edit-auction', {
-      deleteAuctionTransactionDto: { auctionTransactionIds: ['00000000-0000-0000-0000-000000000000'] },
-      addAuctionDtos: [],
-    });
+    const r = await api.patch(
+      '/auction/edit-auction',
+      {
+        deleteAuctionTransactionDto: { auctionTransactionIds: ['00000000-0000-0000-0000-000000000000'] },
+        addAuctionDtos: [],
+      },
+      { deviceId: null },
+    );
     expect(r.status).toBe(400);
   });
 
@@ -736,5 +772,131 @@ describe('auction: edit/delete/validate/list input validation', () => {
     const mine = (await listTxns(s.vyapariAId)).filter((t) => !before.includes(t.auctionTransactionId));
     await deleteTxns(mine.map((t) => t.auctionTransactionId));
     expect(await owed(s.vyapariAId)).toBeCloseTo(baseline, 2);
+  });
+});
+
+// Behaviour the frontends were built against on the old Spring server
+// (mandi-server, app-runner-prod) — see db/auction_legacy_parity.sql.
+describe('auction: old-server parity', () => {
+  const validateQs = (d: string) =>
+    `fromDate=${encodeURIComponent(`${d} 00:00:00`)}&toDate=${encodeURIComponent(`${d} 23:59:59`)}`;
+
+  it('txn_no runs 1, 2, 3… per device per day, and an edit takes the next number', async () => {
+    const s = await getSeed();
+    const baseline = await owed(s.vyapariAId);
+    const before = (await listTxns(s.vyapariAId)).map((t) => t.auctionTransactionId);
+    unwrap(
+      await api.post('/auction', [
+        {
+          kisanId: s.kisanId,
+          itemId: s.itemId,
+          auctionDate: `${today()}T12:00:00`,
+          buyItems: [
+            { vyapariId: s.vyapariAId, rate: 5, quantity: 1, bags: 1 },
+            { vyapariId: s.vyapariAId, rate: 6, quantity: 1, bags: 1 },
+          ],
+        },
+      ]),
+    );
+    const mine = (await listTxns(s.vyapariAId))
+      .filter((t) => !before.includes(t.auctionTransactionId))
+      .sort((a, b) => a.txnNo - b.txnNo);
+    expect(mine).toHaveLength(2);
+    expect(Number.isInteger(mine[0].txnNo)).toBe(true);
+    expect(mine[1].txnNo).toBe(mine[0].txnNo + 1);
+
+    const deviceMax = Math.max(
+      ...(unwrap<any[]>(
+        await api.get(`/auction/list-auction-transaction?${listWindow()}&deviceId=${s.deviceId}`),
+      ) ?? []).map((t) => t.txnNo ?? 0),
+    );
+    unwrap(
+      await api.post('/auction/edit-auction-transaction', {
+        auctionTransactionId: mine[0].auctionTransactionId,
+        vyapariId: s.vyapariAId,
+        rate: 7,
+        quantity: 1,
+        bag: 1,
+        chungi: 0,
+      }),
+    );
+    const edited = (await listTxns(s.vyapariAId)).find((t) => t.parentId === mine[0].auctionTransactionId);
+    expect(edited.txnNo).toBe(deviceMax + 1);
+
+    await deleteTxns([edited.auctionTransactionId, mine[1].auctionTransactionId]);
+    expect(await owed(s.vyapariAId)).toBeCloseTo(baseline, 2);
+  });
+
+  it('list rows carry the old field types: id numbers as numbers, deviceId as a string', async () => {
+    const s = await getSeed();
+    const before = (await listTxns(s.vyapariAId)).map((t) => t.auctionTransactionId);
+    await createAuction(s, { rate: 2, quantity: 1, chungi: 0 });
+    const row = (await listTxns(s.vyapariAId)).find((t) => !before.includes(t.auctionTransactionId));
+    expect(typeof row.kisanIdNo).toBe('number');
+    expect(typeof row.vyapariIdNo).toBe('number');
+    expect(row.deviceId).toBe(String(s.deviceId));
+    // no per-bag weights sent: '' and [], never null
+    expect(row.bagWiseQuantity).toBe('');
+    expect(row.bagWiseQuantityArray).toEqual([]);
+    await deleteTxns([row.auctionTransactionId]);
+  });
+
+  it('unfiltered list is ordered by kisan name, then item name', async () => {
+    const rows = unwrap<any[]>(await api.get(`/auction/list-auction-transaction?${listWindow()}`)) ?? [];
+    const keys = rows.map((r) => `${(r.kisanName ?? '').toLowerCase()}\u0000${(r.itemName ?? '').toLowerCase()}`);
+    expect(keys).toEqual([...keys].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
+  });
+
+  it('edit-auction puts recreated auctions on the header device when the payload names none', async () => {
+    const s = await getSeed();
+    const baseline = await owed(s.vyapariAId);
+    const before = (await listTxns(s.vyapariAId)).map((t) => t.auctionTransactionId);
+    await createAuction(s, { rate: 11, quantity: 1, chungi: 0 });
+    const original = (await listTxns(s.vyapariAId)).find((t) => !before.includes(t.auctionTransactionId));
+    unwrap(
+      await api.patch('/auction/edit-auction', {
+        deleteAuctionTransactionDto: { auctionTransactionIds: [original.auctionTransactionId] },
+        addAuctionDtos: [
+          {
+            kisanId: s.kisanId,
+            itemId: s.itemId,
+            bag: null,
+            deviceId: null,
+            auctionDate: `${today()}T12:00:00`,
+            buyItems: [{ vyapariId: s.vyapariAId, rate: 12, quantity: 1, bags: 1, chungi: 0 }],
+          },
+        ],
+      }),
+    );
+    const recreated = (await listTxns(s.vyapariAId)).find((t) => !before.includes(t.auctionTransactionId));
+    expect(recreated.deviceId).toBe(String(s.deviceId));
+    expect((await owed(s.vyapariAId)) - baseline).toBeCloseTo(12, 2);
+    await deleteTxns([recreated.auctionTransactionId]);
+    expect(await owed(s.vyapariAId)).toBeCloseTo(baseline, 2);
+  });
+
+  it('edit-auction-transaction on an unknown id -> 404', async () => {
+    const s = await getSeed();
+    const r = await api.post('/auction/edit-auction-transaction', {
+      auctionTransactionId: '00000000-0000-0000-0000-000000000000',
+      vyapariId: s.vyapariAId,
+      rate: 1,
+      quantity: 1,
+      bag: 1,
+      chungi: 0,
+    });
+    expect(r.status).toBe(404);
+  });
+
+  it('mark-transaction-validated bulk=true needs no vyapariId (auto_ledger parties)', async () => {
+    const r = await api.patch(`/auction/mark-transaction-validated?${validateQs(today())}&bulk=true`);
+    expect(r.status).toBe(200);
+    expect(Number.isInteger(Number(r.body.responseBody))).toBe(true);
+  });
+
+  it('mark-transaction-validated with neither vyapariId nor bulk is a no-op', async () => {
+    const r = await api.patch(`/auction/mark-transaction-validated?${validateQs(today())}`);
+    expect(r.status).toBe(200);
+    expect(Number(r.body.responseBody)).toBe(0);
   });
 });

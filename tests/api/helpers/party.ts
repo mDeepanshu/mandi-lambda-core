@@ -3,7 +3,7 @@ import { api, unwrap } from './client';
 
 export async function owed(partyId: string): Promise<number> {
   const p = unwrap<any>(await api.get(`/party/getPartyById?partyId=${encodeURIComponent(partyId)}`));
-  return Number(p.owed_amount ?? 0);
+  return Number(p.owedAmount ?? 0); // the old server's Party entity, camelCase
 }
 
 /** Run fn and assert the party's owed_amount moved by exactly `expected`. */
