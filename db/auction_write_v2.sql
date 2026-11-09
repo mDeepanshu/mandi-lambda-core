@@ -71,11 +71,17 @@ as $$
   from jsonb_array_elements(p) with ordinality as a(obj, o)
 $$;
 
+-- item_ts: the lot's own entry time (each buyItem's auctionDate, when it
+-- carries a time of day). The row list orders lots by it, as the old server
+-- did; date-only values (e.g. "2026-11-09") give null, not midnight.
+-- Adding the column changes the return type, so the old shape must be dropped.
+drop function if exists public.auction_v2_items(jsonb);
 create or replace function public.auction_v2_items(p jsonb)
 returns table (
   a_ord integer, b_ord integer, auction_id uuid, auction_transaction_id uuid,
   vyapari_id text, quantity numeric, rate numeric, chungi integer, bag integer,
-  crate_count smallint, bag_wise_quantity text, header_date timestamp, item_date date
+  crate_count smallint, bag_wise_quantity text, header_date timestamp, item_date date,
+  item_ts timestamp
 )
 language sql stable
 as $$
@@ -95,7 +101,9 @@ as $$
                         then b.bi->'bagWiseQuantity' else '[]'::jsonb end
                  ) with ordinality as q(v, vo)),
          (a.obj->>'auctionDate')::timestamp,
-         (b.bi->>'auctionDate')::date
+         (b.bi->>'auctionDate')::date,
+         case when b.bi->>'auctionDate' ~ '\d[T ]\d{1,2}:\d{2}'
+              then (b.bi->>'auctionDate')::timestamp end
   from jsonb_array_elements(p) with ordinality as a(obj, o)
   cross join lateral jsonb_array_elements(a.obj->'buyItems') with ordinality as b(bi, o)
 $$;
@@ -251,13 +259,16 @@ begin
       auction_transaction_id, auction_id, auction_date, vyapari_id, quantity, bag,
       rate, chungi, bag_wise_quantity, validated, is_old
     )
+    -- the header's date (the operator's business day, so list and ledger
+    -- agree) at the lot's own entry time; no lot time -> the header's
     select x.auction_transaction_id, x.auction_id,
-           coalesce(x.header_date, (now() at time zone 'Asia/Kolkata')),
+           coalesce(x.header_date::date + x.item_ts::time, x.header_date,
+                    (now() at time zone 'Asia/Kolkata')),
            x.vyapari_id, x.quantity, x.bag, x.rate, x.chungi, x.bag_wise_quantity, 'N', 'N'
       from jsonb_to_recordset(v_items) as x(
              a_ord integer, b_ord integer, auction_id uuid, auction_transaction_id uuid,
              vyapari_id text, quantity numeric, rate numeric, chungi integer, bag integer,
-             bag_wise_quantity text, header_date timestamp)
+             bag_wise_quantity text, header_date timestamp, item_ts timestamp)
      order by x.a_ord, x.b_ord   -- txn_no is assigned in this order
     on conflict (auction_transaction_id) do nothing
     returning auction_transaction_id, auction_id, vyapari_id, rate, chungi, quantity, bag

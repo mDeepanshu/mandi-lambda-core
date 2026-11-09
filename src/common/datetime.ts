@@ -52,3 +52,25 @@ export function toIstNaive(input?: string | null): string | undefined {
 
   return wall.replace(' ', 'T');
 }
+
+/** A date followed by a time of day: "2026-11-09T05:00:10", "2026-11-09 05:00". */
+const HAS_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{1,2}:\d{2}/;
+
+/**
+ * Like toIstNaive, but a zone-less datetime is read as UTC, not as local time.
+ *
+ * Use this only for inputs whose sender is known to send UTC without the
+ * zone. The auction app sends each lot's entry time as
+ * `toISOString().slice(0, -1)`, which is UTC with the trailing "Z" cut off.
+ * The old Java server parsed that as UTC, through Jackson's default zone.
+ * Date-only and unparseable values are returned unchanged.
+ */
+export function utcToIstNaive(input?: string | null): string | undefined {
+  if (input == null) return undefined;
+  const raw = String(input).trim();
+  if (raw === '') return undefined;
+  if (HAS_ZONE.test(raw) || !HAS_TIME.test(raw)) return toIstNaive(raw);
+  return Number.isNaN(Date.parse(`${raw.replace(' ', 'T')}Z`))
+    ? raw
+    : toIstNaive(`${raw.replace(' ', 'T')}Z`);
+}

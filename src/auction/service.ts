@@ -1,5 +1,5 @@
 import * as repo from './auction.repo';
-import { toIstNaive } from '../common/datetime';
+import { toIstNaive, utcToIstNaive } from '../common/datetime';
 import { auditOwed, vyapariIdsOfTransactions } from '../common/owed-audit';
 import { logger } from '../common/logger';
 import {
@@ -17,6 +17,22 @@ import {
 const withIstDate = <T extends { auctionDate?: string }>(rows: T[]): T[] =>
   rows.map((r) => (r.auctionDate ? { ...r, auctionDate: toIstNaive(r.auctionDate) } : r));
 
+// Each lot's auctionDate is the time that lot was entered. The DB stores it on
+// auction_transaction.auction_date, and the list sorts rows by it. The auction
+// app (POST /auction) sends it as UTC without the "Z", so it is read as UTC.
+// The edit dialog (PATCH /auction/edit-auction) sends IST wall-clock instead,
+// so that path uses withIstDate's rule for its lots, not this one.
+const withIstLotDates = (auctions: AddAuctionDto[]): AddAuctionDto[] =>
+  auctions.map((a) => ({
+    ...a,
+    buyItems: (a.buyItems ?? []).map((b: any) =>
+      b?.auctionDate ? { ...b, auctionDate: utcToIstNaive(b.auctionDate) } : b
+    ),
+  }));
+
+const withIstLotDatesAsIst = (auctions: AddAuctionDto[]): AddAuctionDto[] =>
+  auctions.map((a) => ({ ...a, buyItems: withIstDate((a.buyItems ?? []) as any[]) }));
+
 const buyerIds = (auctions: AddAuctionDto[]) =>
   auctions.flatMap((a) => (a.buyItems ?? []).map((b) => (b as { vyapariId?: string }).vyapariId));
 
@@ -28,7 +44,7 @@ export async function addAuction(
   deviceId: string
 ) {
   const result = await auditOwed('auction create', buyerIds(auctions), () =>
-    repo.addAuction(withIstDate(auctions), deviceId)
+    repo.addAuction(withIstLotDates(withIstDate(auctions)), deviceId)
   );
   if (result?.alreadySaved) {
     // a retry or a second tab re-posting the queue; nothing was duplicated
@@ -120,7 +136,11 @@ export const editAuction = async (
       ...ids,
       ...buyerIds(dto.addAuctionDtos),
     ]),
-    () => repo.editAuction({ ...dto, addAuctionDtos: withIstDate(dto.addAuctionDtos) }, deviceId)
+    () =>
+      repo.editAuction(
+        { ...dto, addAuctionDtos: withIstLotDatesAsIst(withIstDate(dto.addAuctionDtos)) },
+        deviceId
+      )
   );
 };
 
