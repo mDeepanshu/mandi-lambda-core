@@ -42,10 +42,11 @@ const stageArg = process.argv.includes('--stage')
   ? process.argv[process.argv.indexOf('--stage') + 1]
   : 'dev';
 
+// Each list holds ONLY that client's own sites. A site in the other client's
+// list lets a mis-wired frontend read or write the wrong mandi's data with no
+// error, so never share an origin between hmb and his.
 const originsByStage: Record<string, string[]> = {
   hmb: [
-    'https://mandiapplication.make73.com',
-    'https://mandi-application-seven.vercel.app',
     'https://auction-hmb.make73.com',
     'https://hmb-auction.make73.com',
     'https://hmb-application.make73.com',
@@ -59,7 +60,6 @@ const originsByStage: Record<string, string[]> = {
     'https://cratehis.make73.com',
     'https://hiskisanbill.make73.com',
     'https://mandiauction.make73.com',
-    'https://auction-hmb.make73.com',
     'https://his-application.make73.com',
     // his main app (Vercel prod): old server + his lambda (party list, crate)
     'https://mandiapplication.make73.com',
