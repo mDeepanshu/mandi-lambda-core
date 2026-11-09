@@ -61,6 +61,11 @@ const originsByStage: Record<string, string[]> = {
     'https://mandiauction.make73.com',
     'https://auction-hmb.make73.com',
     'https://his-application.make73.com',
+    // his main app (Vercel prod): old server + his lambda (party list, crate)
+    'https://mandiapplication.make73.com',
+    // HIS Vyapari app (Vercel)
+    'https://mva.make73.com',
+    'https://mandi-vyapari.vercel.app',
   ],
 };
 
@@ -176,6 +181,10 @@ const serverlessConfiguration: AWS = {
     vyapari: {
       handler: 'src/vyapari/handler.handler',
       logRetentionInDays: 30,
+      // ledger-list batches for the frontend ledger cache sync (180 days x 100
+      // vyaparis) take ~2-5.6s on his; a cold DB cache hit the 6s default.
+      // HTTP API caps integrations at 30s.
+      timeout: 29,
       events: [
         { httpApi: { path: '/vyapari/{proxy+}', method: 'get' } },
         { httpApi: { path: '/vyapari/{proxy+}', method: 'post' } },

@@ -512,8 +512,10 @@ begin
   if auction_transaction_ids is null or array_length(auction_transaction_ids, 1) is null then
     raise exception 'auction_transaction_ids cannot be empty';
   end if;
-  if new_payload is null or jsonb_typeof(new_payload) <> 'array' or jsonb_array_length(new_payload) = 0 then
-    raise exception 'AUCTION_VALIDATION: new_payload must be a non-empty array of auctions';
+  -- an empty array is valid: the edit dialog sends [] when every lot of the
+  -- auction was removed, i.e. "delete these, add nothing" (as on the old server)
+  if new_payload is null or jsonb_typeof(new_payload) <> 'array' then
+    raise exception 'AUCTION_VALIDATION: new_payload must be an array of auctions';
   end if;
 
   select array_agg(distinct x) into v_ids from unnest(auction_transaction_ids) as x;
@@ -560,10 +562,12 @@ begin
   end if;
 
   perform delete_auction_transactions(v_ids);
-  perform auction_create_v2(
-    new_payload,
-    coalesce((new_payload->0->>'device_id')::integer, (new_payload->0->>'deviceId')::integer)
-  );
+  if jsonb_array_length(new_payload) > 0 then
+    perform auction_create_v2(
+      new_payload,
+      coalesce((new_payload->0->>'device_id')::integer, (new_payload->0->>'deviceId')::integer)
+    );
+  end if;
   return true;
 end;
 $fn$;

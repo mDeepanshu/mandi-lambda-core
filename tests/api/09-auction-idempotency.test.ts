@@ -204,6 +204,21 @@ describe('auction v2: edits and deletes must target the current row', () => {
     expect(await owed(s.vyapariAId)).toBeCloseTo(base, 2);
   });
 
+  it('edit-auction with addAuctionDtos [] only deletes (the edit dialog removing every lot)', async () => {
+    const s = await getSeed();
+    const base = await owed(s.vyapariAId);
+    const l = lot(s, { rate: 8, quantity: 2 }); // 16
+    unwrap(await api.post('/auction', auctionBody(s, randomUUID(), [l])));
+    expect(await owed(s.vyapariAId)).toBeCloseTo(base + 16, 2);
+    const r = await api.patch('/auction/edit-auction', {
+      deleteAuctionTransactionDto: { auctionTransactionIds: [l.auctionTransactionId] },
+      addAuctionDtos: [],
+    });
+    expect(r.status).toBe(200);
+    expect(await owed(s.vyapariAId)).toBeCloseTo(base, 2);
+    expect((await listTxns(s.vyapariAId)).some((t) => t.auctionTransactionId === l.auctionTransactionId)).toBe(false);
+  });
+
   it('edit-auction: a retry with the same new ids succeeds without change; without ids it is 409', async () => {
     const s = await getSeed();
     const base = await owed(s.vyapariAId);
