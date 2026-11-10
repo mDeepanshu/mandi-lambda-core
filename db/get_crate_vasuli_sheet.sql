@@ -19,6 +19,7 @@ BEGIN
     SELECT
       jsonb_build_object(
         'vyapari_id', p.party_id,
+        'id_no', p.id_no,
         'vyapari_name', p.name,
 
         -- Opening balance
