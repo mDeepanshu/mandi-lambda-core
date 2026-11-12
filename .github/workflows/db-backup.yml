@@ -1,0 +1,106 @@
+# Daily logical backup of the production databases (his, hmb) to S3.
+#
+# pg_dump (custom format, `public` schema: all tables, functions, triggers,
+# policies, grants) -> private S3 bucket -> restore drill into a throwaway
+# Postgres on the runner. Restore steps: docs/db-backup.md.
+#
+# This repo is PUBLIC, so the run logs are public: never echo row data,
+# connection strings or anything derived from them here.
+#
+# Needs (Settings -> Secrets and variables -> Actions):
+#   secrets   BACKUP_DB_URL_HIS, BACKUP_DB_URL_HMB
+#             Session-pooler URI (IPv4) — runners cannot reach the IPv6-only
+#             db.<ref>.supabase.co host:
+#             postgresql://<role>.<ref>:<password>@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+#   variables BACKUP_AWS_ROLE_ARN  IAM role assumed via GitHub OIDC (PutObject only)
+#             BACKUP_S3_BUCKET     bucket name
+name: DB backup
+
+on:
+  schedule:
+    - cron: '30 20 * * *' # 02:00 IST, after the mandi day is closed
+  workflow_dispatch:
+
+permissions:
+  id-token: write # GitHub OIDC -> AWS role, no stored AWS keys
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    # The AWS role only trusts main, so a run from any other ref could not upload.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false # one client's failure must not skip the other's backup
+      matrix:
+        stage: [his, hmb]
+    env:
+      PG_IMAGE: postgres:17-alpine # match the server major (Supabase is PG 17)
+      STAGE: ${{ matrix.stage }}
+    steps:
+      - name: Dump
+        env:
+          DB_URL: ${{ secrets[format('BACKUP_DB_URL_{0}', matrix.stage)] }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DB_URL" ]; then
+            echo "::error::secret BACKUP_DB_URL_${STAGE^^} is not set"; exit 1
+          fi
+          mkdir -p out && chmod 777 out
+          echo "FILE=${STAGE}-$(TZ=Asia/Kolkata date +%F_%H%M).dump" >> "$GITHUB_ENV"
+          docker run --rm -e DB_URL -v "$PWD/out:/out" "$PG_IMAGE" \
+            sh -c 'pg_dump "$DB_URL" --format=custom --schema=public --file=/out/db.dump'
+
+      - name: Sanity-check the archive
+        run: |
+          set -euo pipefail
+          tables=$(docker run --rm -v "$PWD/out:/out" "$PG_IMAGE" pg_restore --list /out/db.dump | grep -c 'TABLE DATA')
+          bytes=$(stat -c %s out/db.dump)
+          echo "tables=$tables bytes=$bytes"
+          # A healthy dump has 16+ tables and is megabytes; refuse to store a stub.
+          [ "$tables" -ge 10 ] && [ "$bytes" -ge 500000 ]
+
+      - name: AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.BACKUP_AWS_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      - name: Upload to S3
+        env:
+          BUCKET: ${{ vars.BACKUP_S3_BUCKET }}
+        run: |
+          set -euo pipefail
+          # daily/ expires after 30 days, monthly/ after 365 (bucket lifecycle rules)
+          aws s3 cp out/db.dump "s3://$BUCKET/daily/$STAGE/$FILE" --only-show-errors
+          if [ "$(TZ=Asia/Kolkata date +%d)" = "01" ]; then
+            aws s3 cp out/db.dump "s3://$BUCKET/monthly/$STAGE/$FILE" --only-show-errors
+          fi
+          echo "stored $FILE"
+
+      # Runs after the upload on purpose: a drill failure flags the run red
+      # (GitHub emails the repo owner) but the backup itself is already safe.
+      - name: Restore drill
+        run: |
+          set -euo pipefail
+          docker run -d --name drill -e POSTGRES_PASSWORD=drill -v "$PWD/out:/out" "$PG_IMAGE" >/dev/null
+          for i in $(seq 1 30); do
+            docker exec drill pg_isready -U postgres -q && break; sleep 1
+          done
+          # Roles every Supabase project has; the dump's grants/policies name them.
+          docker exec drill psql -U postgres -qc \
+            "create role anon; create role authenticated; create role service_role; create role supabase_admin; create role authenticator; create role dashboard_user;"
+          docker exec drill pg_restore -U postgres -d postgres --no-owner --clean --if-exists /out/db.dump 2> restore.err || true
+          errors=$(grep -c 'pg_restore: error' restore.err || true)
+          counts=$(docker exec drill psql -U postgres -Atc \
+            "select (select count(*) from public.party) || ' ' || (select count(*) from public.auction_transaction) || ' ' || (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public')")
+          read -r parties txns funcs <<< "$counts"
+          echo "restore errors=$errors functions=$funcs"
+          # Error text can quote DDL but never row data; still keep it short.
+          grep 'pg_restore: error' restore.err | cut -c1-200 | head -20 || true
+          [ "$errors" -eq 0 ] && [ "$parties" -gt 0 ] && [ "$txns" -gt 0 ] && [ "$funcs" -gt 50 ]
